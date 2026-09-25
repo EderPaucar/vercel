@@ -27,7 +27,7 @@ const SecurityCard = ({
   }
 
   return (
-    <div className="card p-4">
+    <div className="card p-3">
       <div className="flex justify-between items-center">
         <div className="font-semibold">{title}</div>
 

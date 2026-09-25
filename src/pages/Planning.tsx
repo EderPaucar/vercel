@@ -1,48 +1,38 @@
-import React, {
-  FormEvent,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
-
+import React, { FormEvent, useEffect, useMemo, useState } from 'react'
 import {
+  AlertCircle,
+  Archive,
+  ArrowLeft,
+  ArrowRight,
+  Calculator,
   Check,
-  Cloud,
-  Save,
-  Users,
-  Layers,
-  Target,
-  MapPin,
-  Trash2,
-  Pencil,
-  RotateCcw,
-  Zap,
-  DollarSign,
-  Server,
-  ShieldCheck,
-  Globe,
-  Database,
-  HardDrive,
-  Network,
   CheckCircle2,
-  Circle,
-  Sparkles,
-  TrendingUp,
-  Activity,
+  ChevronDown,
+  Cloud,
   Copy,
-  Download,
+  Database,
+  DollarSign,
+  Edit3,
+  FileText,
+  Globe2,
+  HardDrive,
+  Layers,
+  MapPin,
+  Network,
+  Plus,
+  RefreshCw,
+  Save,
   Search,
+  Server,
+  Shield,
+  Trash2,
+  Users,
+  Wifi,
   X,
-  BarChart3,
-  Eye,
-  ChevronRight,
+  Zap,
 } from 'lucide-react'
 
-import {
-  awsServices,
-  regions,
-  costEstimates,
-} from '../data/awsServices'
+import { awsServices, costEstimates, regions } from '../data/awsServices'
 
 interface CloudProposal {
   id: string
@@ -54,2221 +44,1644 @@ interface CloudProposal {
   availability: string
   services: string[]
   migrationObjectives: string[]
+  budget: number
   monthlyCost: number
   annualCost: number
+  readiness: number
   createdAt: string
 }
 
+type Step = 1 | 2 | 3 | 4 | 5
+
 const migrationOptions = [
-  'Reducir costos operativos',
-  'Mejorar el rendimiento',
-  'Aumentar la disponibilidad',
-  'Mejorar la escalabilidad',
-  'Mejorar la seguridad',
-  'Modernizar la infraestructura',
-  'Facilitar el acceso a los usuarios',
-  'Migrar servicios a la nube',
+  'Migración de aplicación',
+  'Modernización de aplicación',
+  'Migración de base de datos',
+  'Implementación de nueva aplicación',
+  'Respaldo y recuperación',
 ]
 
 const applicationOptions = [
   'Aplicación web',
-  'Aplicación móvil',
-  'API / Backend',
-  'E-commerce',
   'Sistema empresarial',
+  'API / Backend',
+  'Sistema de gestión',
   'Aplicación de datos',
 ]
 
 const availabilityOptions = [
-  {
-    value: '99.0% - Baja',
-    label: 'Baja',
-    description: 'Aplicaciones no críticas',
-    icon: '○',
-  },
-  {
-    value: '99.5% - Media',
-    label: 'Media',
-    description: 'Aplicaciones importantes',
-    icon: '◐',
-  },
-  {
-    value: '99.9% - Alta',
-    label: 'Alta',
-    description: 'Aplicaciones críticas',
-    icon: '●',
-  },
-  {
-    value: '99.99% - Muy alta',
-    label: 'Muy alta',
-    description: 'Alta disponibilidad Multi-AZ',
-    icon: '◆',
-  },
+  'Básica',
+  'Alta',
+  'Crítica',
 ]
 
 const quickConfigurations = [
   {
-    id: 'web',
-    title: 'Arquitectura Web',
-    description: 'Frontend, backend y base de datos',
-    icon: Globe,
-    applicationType: 'Aplicación web',
-    services: [
-      'route53',
-      'cloudfront',
-      'vpc',
-      'ec2',
-      'rds',
-      's3',
-      'iam',
-    ],
-    objectives: [
-      'Mejorar el rendimiento',
-      'Mejorar la escalabilidad',
-      'Aumentar la disponibilidad',
-    ],
-    availability: '99.9% - Alta',
+    name: 'Aplicación web básica',
+    description: 'Configuración inicial para una aplicación web.',
+    services: ['EC2', 'S3', 'RDS'],
+    availability: 'Básica',
+    users: 100,
   },
   {
-    id: 'api',
-    title: 'API / Backend',
-    description: 'API segura y escalable',
-    icon: Network,
-    applicationType: 'API / Backend',
-    services: [
-      'route53',
-      'vpc',
-      'ec2',
-      'rds',
-      'iam',
-    ],
-    objectives: [
-      'Mejorar la seguridad',
-      'Mejorar la escalabilidad',
-      'Mejorar el rendimiento',
-    ],
-    availability: '99.9% - Alta',
+    name: 'Aplicación web alta disponibilidad',
+    description: 'Configuración orientada a disponibilidad y distribución.',
+    services: ['EC2', 'S3', 'RDS', 'CloudFront', 'Route 53', 'VPC', 'IAM'],
+    availability: 'Alta',
+    users: 500,
   },
   {
-    id: 'ecommerce',
-    title: 'E-Commerce',
-    description: 'Tienda online de alta disponibilidad',
-    icon: Sparkles,
-    applicationType: 'E-commerce',
-    services: [
-      'route53',
-      'cloudfront',
-      'vpc',
-      'ec2',
-      'rds',
-      's3',
-      'iam',
-    ],
-    objectives: [
-      'Aumentar la disponibilidad',
-      'Mejorar el rendimiento',
-      'Mejorar la escalabilidad',
-      'Mejorar la seguridad',
-    ],
-    availability: '99.99% - Muy alta',
+    name: 'Arquitectura completa',
+    description: 'Configuración con todos los servicios principales.',
+    services: ['EC2', 'S3', 'RDS', 'IAM', 'VPC', 'Route 53', 'CloudFront'],
+    availability: 'Crítica',
+    users: 1000,
   },
 ]
 
-const serviceIcons: Record<string, React.ElementType> = {
-  ec2: Server,
-  s3: HardDrive,
-  rds: Database,
-  iam: ShieldCheck,
-  vpc: Network,
-  route53: Globe,
-  cloudfront: Cloud,
-}
+const steps = [
+  {
+    number: 1,
+    title: 'Información',
+    description: 'Datos de la solución',
+    icon: FileText,
+  },
+  {
+    number: 2,
+    title: 'Capacidad',
+    description: 'Usuarios y disponibilidad',
+    icon: Users,
+  },
+  {
+    number: 3,
+    title: 'Servicios',
+    description: 'Servicios AWS',
+    icon: Layers,
+  },
+  {
+    number: 4,
+    title: 'Objetivos',
+    description: 'Objetivos de migración',
+    icon: Zap,
+  },
+  {
+    number: 5,
+    title: 'Resumen',
+    description: 'Revisión final',
+    icon: CheckCircle2,
+  },
+]
 
 const Planning = (): JSX.Element => {
+  const [currentStep, setCurrentStep] = useState<Step>(1)
+
   const [solutionName, setSolutionName] = useState('')
-  const [applicationType, setApplicationType] = useState('')
+  const [applicationType, setApplicationType] = useState('Aplicación web')
   const [description, setDescription] = useState('')
+  const [region, setRegion] = useState('us-east-1')
+  const [users, setUsers] = useState(100)
+  const [availability, setAvailability] = useState('Básica')
+  const [selectedServices, setSelectedServices] = useState<string[]>([
+    'EC2',
+    'S3',
+    'RDS',
+  ])
+  const [migrationObjectives, setMigrationObjectives] = useState<string[]>([
+    'Migración de aplicación',
+  ])
 
-  const [selectedRegion, setSelectedRegion] = useState(
-    regions[0]?.code ?? '',
-  )
-
-  const [users, setUsers] = useState('')
-  const [availability, setAvailability] = useState('')
-
-  const [selectedServices, setSelectedServices] =
-    useState<string[]>([])
-
-  const [migrationObjectives, setMigrationObjectives] =
-    useState<string[]>([])
-
-  const [proposals, setProposals] = useState<
-    CloudProposal[]
-  >([])
-
-  const [editingId, setEditingId] = useState<string | null>(
-    null,
-  )
-
+  const [proposals, setProposals] = useState<CloudProposal[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showHistory, setShowHistory] = useState(true)
+  const [notification, setNotification] = useState('')
+  const [draftSaved, setDraftSaved] = useState(false)
 
-  const [successMessage, setSuccessMessage] = useState('')
-
-  const [showPreview, setShowPreview] = useState(false)
-
-  /*
-   * Cargar propuestas almacenadas
-   */
   useEffect(() => {
-    const saved = localStorage.getItem(
-      'cloudops-proposals',
-    )
-
-    if (!saved) return
-
     try {
-      const parsed: CloudProposal[] = JSON.parse(saved)
+      const savedProposals = localStorage.getItem('cloudops-proposals')
 
-      if (Array.isArray(parsed)) {
-        setProposals(parsed)
+      if (savedProposals) {
+        setProposals(JSON.parse(savedProposals))
       }
     } catch {
       setProposals([])
     }
   }, [])
 
-  /*
-   * Guardar automáticamente
-   */
   useEffect(() => {
-    localStorage.setItem(
-      'cloudops-proposals',
-      JSON.stringify(proposals),
-    )
+    localStorage.setItem('cloudops-proposals', JSON.stringify(proposals))
   }, [proposals])
 
-  /*
-   * Mostrar mensaje temporal
-   */
-  const showMessage = (message: string): void => {
-    setSuccessMessage(message)
+  useEffect(() => {
+    const draft = {
+      solutionName,
+      applicationType,
+      description,
+      region,
+      users,
+      availability,
+      selectedServices,
+      migrationObjectives,
+      currentStep,
+    }
 
-    window.setTimeout(() => {
-      setSuccessMessage('')
+    localStorage.setItem('cloudops-planning-draft', JSON.stringify(draft))
+  }, [
+    solutionName,
+    applicationType,
+    description,
+    region,
+    users,
+    availability,
+    selectedServices,
+    migrationObjectives,
+    currentStep,
+  ])
+
+  useEffect(() => {
+    if (!notification) return
+
+    const timer = window.setTimeout(() => {
+      setNotification('')
     }, 3500)
-  }
 
-  /*
-   * Seleccionar / quitar servicio
-   */
-  const toggleService = (
-    serviceId: string,
-  ): void => {
-    setSelectedServices((currentServices) => {
-      if (currentServices.includes(serviceId)) {
-        return currentServices.filter(
-          (id) => id !== serviceId,
-        )
-      }
+    return () => window.clearTimeout(timer)
+  }, [notification])
 
-      return [...currentServices, serviceId]
-    })
-  }
+  const selectedRegionData = useMemo(
+    () => regions.find((item) => item.code === region),
+    [region],
+  )
 
-  /*
-   * Seleccionar / quitar objetivo
-   */
-  const toggleMigrationObjective = (
-    objective: string,
-  ): void => {
-    setMigrationObjectives((currentObjectives) => {
-      if (currentObjectives.includes(objective)) {
-        return currentObjectives.filter(
-          (item) => item !== objective,
-        )
-      }
+  const monthlyCost = useMemo(() => {
+    return selectedServices.reduce((total, serviceName) => {
+      const cost = costEstimates.find(
+        (item) => item.serviceName === serviceName,
+      )
 
-      return [...currentObjectives, objective]
-    })
-  }
-
-  /*
-   * Configuración rápida
-   */
-  const applyQuickConfiguration = (
-    configuration: (typeof quickConfigurations)[number],
-  ): void => {
-    setApplicationType(configuration.applicationType)
-    setSelectedServices(configuration.services)
-    setMigrationObjectives(
-      configuration.objectives,
-    )
-    setAvailability(configuration.availability)
-
-    showMessage(
-      `${configuration.title} aplicada correctamente.`,
-    )
-  }
-
-  /*
-   * Servicios actuales
-   */
-  const selectedServiceData = useMemo(() => {
-    return awsServices.filter((service) =>
-      selectedServices.includes(service.id),
-    )
+      return total + (cost?.monthlyCost ?? 0)
+    }, 0)
   }, [selectedServices])
 
-  /*
-   * Costos
-   */
-  const serviceCosts = useMemo(() => {
-    return selectedServiceData.map((service) => {
-      const cost = costEstimates.find(
-        (item) => item.serviceName === service.name,
-      )
+  const annualCost = monthlyCost * 12
 
-      return {
-        id: service.id,
-        name: service.name,
-        monthlyCost: cost?.monthlyCost ?? 0,
-        annualCost: (cost?.monthlyCost ?? 0) * 12,
-      }
-    })
-  }, [selectedServiceData])
+  const readiness = useMemo(() => {
+    let score = 40
 
-  const estimatedMonthlyCost = useMemo(() => {
-    return serviceCosts.reduce(
-      (total, item) => total + item.monthlyCost,
-      0,
+    if (solutionName.trim()) score += 10
+    if (description.trim()) score += 10
+    if (region) score += 5
+    if (users > 0) score += 5
+    if (availability) score += 5
+    if (selectedServices.length >= 3) score += 10
+    if (selectedServices.includes('IAM')) score += 5
+    if (selectedServices.includes('VPC')) score += 5
+    if (migrationObjectives.length > 0) score += 5
+
+    return Math.min(score, 100)
+  }, [
+    solutionName,
+    description,
+    region,
+    users,
+    availability,
+    selectedServices,
+    migrationObjectives,
+  ])
+
+  const capacityLevel = useMemo(() => {
+    if (users >= 1000) return 'Alta'
+    if (users >= 500) return 'Media'
+    return 'Básica'
+  }, [users])
+
+  const filteredProposals = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase()
+
+    if (!search) return proposals
+
+    return proposals.filter(
+      (proposal) =>
+        proposal.solutionName.toLowerCase().includes(search) ||
+        proposal.id.toLowerCase().includes(search) ||
+        proposal.region.toLowerCase().includes(search),
     )
-  }, [serviceCosts])
+  }, [proposals, searchTerm])
 
-  const estimatedAnnualCost =
-    estimatedMonthlyCost * 12
+  const getServiceName = (id: string) => {
+    const service = awsServices.find((item) => item.id === id)
+    return service?.name ?? id
+  }
 
-  /*
-   * Progreso de los 8 campos
-   */
-  const completedFields = [
-    solutionName.trim() !== '',
-    applicationType !== '',
-    description.trim() !== '',
-    selectedRegion !== '',
-    users !== '' && Number(users) > 0,
-    availability !== '',
-    selectedServices.length > 0,
-    migrationObjectives.length > 0,
-  ].filter(Boolean).length
+  const getServiceIcon = (serviceName: string) => {
+    const name = serviceName.toUpperCase()
 
-  const progress = Math.round(
-    (completedFields / 8) * 100,
-  )
+    if (name === 'EC2') return Server
+    if (name === 'S3') return HardDrive
+    if (name === 'RDS') return Database
+    if (name === 'IAM') return Shield
+    if (name === 'VPC') return Network
+    if (name === 'ROUTE 53') return Globe2
+    if (name === 'CLOUDFRONT') return Wifi
 
-  /*
-   * Región
-   */
-  const currentRegion = regions.find(
-    (region) => region.code === selectedRegion,
-  )
+    return Cloud
+  }
 
-  /*
-   * Formulario
-   */
-  const handleSubmit = (
-    event: FormEvent<HTMLFormElement>,
-  ): void => {
+  const getRegionLocation = (code: string) => {
+    const item = regions.find((item) => item.code === code)
+    return item?.location ?? code
+  }
+
+  const readinessLabel = () => {
+    if (readiness >= 85) return 'Listo para implementar'
+    if (readiness >= 65) return 'Bien encaminado'
+    if (readiness >= 45) return 'En planificación'
+    return 'Pendiente'
+  }
+
+  const readinessClass = () => {
+    if (readiness >= 85) return 'text-security'
+    if (readiness >= 65) return 'text-primary'
+    if (readiness >= 45) return 'text-costs'
+    return 'text-alerts'
+  }
+
+  const toggleService = (serviceName: string) => {
+    setSelectedServices((current) =>
+      current.includes(serviceName)
+        ? current.filter((item) => item !== serviceName)
+        : [...current, serviceName],
+    )
+  }
+
+  const toggleObjective = (objective: string) => {
+    setMigrationObjectives((current) =>
+      current.includes(objective)
+        ? current.filter((item) => item !== objective)
+        : [...current, objective],
+    )
+  }
+
+  const applyQuickConfiguration = (
+    configuration: (typeof quickConfigurations)[number],
+  ) => {
+    setSolutionName(configuration.name)
+    setDescription(configuration.description)
+    setServices(configuration.services)
+    setAvailability(configuration.availability)
+    setUsers(configuration.users)
+    setCurrentStep(1)
+
+    setNotification(`Configuración "${configuration.name}" aplicada`)
+  }
+
+  const setServices = (services: string[]) => {
+    setSelectedServices(services)
+  }
+
+  const resetForm = () => {
+    setCurrentStep(1)
+    setSolutionName('')
+    setApplicationType('Aplicación web')
+    setDescription('')
+    setRegion('us-east-1')
+    setUsers(100)
+    setAvailability('Básica')
+    setSelectedServices(['EC2', 'S3', 'RDS'])
+    setMigrationObjectives(['Migración de aplicación'])
+    setEditingId(null)
+    setDraftSaved(false)
+  }
+
+  const saveDraft = () => {
+    localStorage.setItem(
+      'cloudops-planning-draft',
+      JSON.stringify({
+        solutionName,
+        applicationType,
+        description,
+        region,
+        users,
+        availability,
+        selectedServices,
+        migrationObjectives,
+        currentStep,
+      }),
+    )
+
+    setDraftSaved(true)
+    setNotification('Borrador guardado correctamente')
+  }
+
+  const validateStep = (step: Step) => {
+    if (step === 1) {
+      if (!solutionName.trim()) {
+        setNotification('Ingresa el nombre de la solución')
+        return false
+      }
+
+      if (!description.trim()) {
+        setNotification('Ingresa una descripción')
+        return false
+      }
+    }
+
+    if (step === 2) {
+      if (users <= 0) {
+        setNotification('La cantidad de usuarios debe ser mayor a 0')
+        return false
+      }
+    }
+
+    if (step === 3) {
+      if (selectedServices.length === 0) {
+        setNotification('Selecciona al menos un servicio AWS')
+        return false
+      }
+    }
+
+    if (step === 4) {
+      if (migrationObjectives.length === 0) {
+        setNotification('Selecciona al menos un objetivo')
+        return false
+      }
+    }
+
+    return true
+  }
+
+  const nextStep = () => {
+    if (!validateStep(currentStep)) return
+
+    if (currentStep < 5) {
+      setCurrentStep((currentStep + 1) as Step)
+    }
+  }
+
+  const previousStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep((currentStep - 1) as Step)
+    }
+  }
+
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
 
-    if (!solutionName.trim()) {
-      showMessage(
-        'Ingresa el nombre de la solución.',
-      )
+    if (
+      !validateStep(1) ||
+      !validateStep(2) ||
+      !validateStep(3) ||
+      !validateStep(4)
+    ) {
       return
     }
-
-    if (!applicationType) {
-      showMessage(
-        'Selecciona el tipo de aplicación.',
-      )
-      return
-    }
-
-    if (!description.trim()) {
-      showMessage(
-        'Ingresa una descripción.',
-      )
-      return
-    }
-
-    if (!users || Number(users) <= 0) {
-      showMessage(
-        'Ingresa un número válido de usuarios.',
-      )
-      return
-    }
-
-    if (selectedServices.length === 0) {
-      showMessage(
-        'Selecciona al menos un servicio Cloud.',
-      )
-      return
-    }
-
-    if (migrationObjectives.length === 0) {
-      showMessage(
-        'Selecciona al menos un objetivo de migración.',
-      )
-      return
-    }
-
-    const currentDate =
-      new Date().toLocaleDateString('es-PE')
 
     const proposal: CloudProposal = {
-      id:
-        editingId ??
-        `PROP-${String(
-          proposals.length + 1,
-        ).padStart(3, '0')}`,
+      id: editingId ?? `PROP-${Date.now()}`,
       solutionName: solutionName.trim(),
       applicationType,
       description: description.trim(),
-      region: selectedRegion,
-      users: Number(users),
+      region,
+      users,
       availability,
       services: selectedServices,
       migrationObjectives,
-      monthlyCost: estimatedMonthlyCost,
-      annualCost: estimatedAnnualCost,
-      createdAt: currentDate,
+      budget: annualCost,
+      monthlyCost,
+      annualCost,
+      readiness,
+      createdAt: new Date().toLocaleString('es-PE'),
     }
 
+    localStorage.setItem(
+      'cloudops-active-proposal',
+      JSON.stringify(proposal),
+    )
+
     if (editingId) {
-      setProposals((currentProposals) =>
-        currentProposals.map((item) =>
-          item.id === editingId
-            ? proposal
-            : item,
+      setProposals((current) =>
+        current.map((item) =>
+          item.id === editingId ? proposal : item,
         ),
       )
 
-      showMessage(
-        'La propuesta fue actualizada correctamente.',
-      )
+      setNotification('Propuesta actualizada correctamente')
     } else {
-      setProposals((currentProposals) => [
-        proposal,
-        ...currentProposals,
-      ])
-
-      showMessage(
-        'La propuesta Cloud fue registrada correctamente.',
-      )
+      setProposals((current) => [proposal, ...current])
+      setNotification('Propuesta registrada correctamente')
     }
 
-    resetForm(false)
-  }
-
-  /*
-   * Limpiar formulario
-   */
-  const resetForm = (
-    displayMessage = true,
-  ): void => {
-    setSolutionName('')
-    setApplicationType('')
-    setDescription('')
-    setSelectedRegion(
-      regions[0]?.code ?? '',
-    )
-    setUsers('')
-    setAvailability('')
-    setSelectedServices([])
-    setMigrationObjectives([])
     setEditingId(null)
-
-    if (displayMessage) {
-      showMessage(
-        'Formulario limpiado correctamente.',
-      )
-    }
+    setShowHistory(true)
+    setCurrentStep(5)
+    localStorage.removeItem('cloudops-planning-draft')
   }
 
-  /*
-   * Editar
-   */
-  const editProposal = (
-    proposal: CloudProposal,
-  ): void => {
+  const editProposal = (proposal: CloudProposal) => {
+    setEditingId(proposal.id)
     setSolutionName(proposal.solutionName)
-    setApplicationType(
-      proposal.applicationType,
-    )
+    setApplicationType(proposal.applicationType)
     setDescription(proposal.description)
-    setSelectedRegion(proposal.region)
-    setUsers(String(proposal.users))
+    setRegion(proposal.region)
+    setUsers(proposal.users)
     setAvailability(proposal.availability)
     setSelectedServices(proposal.services)
-    setMigrationObjectives(
-      proposal.migrationObjectives,
-    )
-    setEditingId(proposal.id)
+    setMigrationObjectives(proposal.migrationObjectives)
+    setCurrentStep(1)
 
     window.scrollTo({
       top: 0,
       behavior: 'smooth',
     })
-
-    showMessage(
-      `Editando ${proposal.id}. Guarda nuevamente los cambios.`,
-    )
   }
 
-  /*
-   * Duplicar
-   */
-  const duplicateProposal = (
-    proposal: CloudProposal,
-  ): void => {
+  const duplicateProposal = (proposal: CloudProposal) => {
     const duplicated: CloudProposal = {
       ...proposal,
-      id: `PROP-${String(
-        proposals.length + 1,
-      ).padStart(3, '0')}`,
+      id: `PROP-${Date.now()}`,
       solutionName: `${proposal.solutionName} - Copia`,
-      createdAt:
-        new Date().toLocaleDateString('es-PE'),
+      createdAt: new Date().toLocaleString('es-PE'),
     }
 
-    setProposals((currentProposals) => [
-      duplicated,
-      ...currentProposals,
-    ])
-
-    showMessage(
-      'La propuesta fue duplicada correctamente.',
-    )
+    setProposals((current) => [duplicated, ...current])
+    setNotification('Propuesta duplicada correctamente')
   }
 
-  /*
-   * Eliminar
-   */
-  const deleteProposal = (
-    proposalId: string,
-  ): void => {
-    const confirmed = window.confirm(
-      '¿Deseas eliminar esta propuesta?',
+  const deleteProposal = (id: string) => {
+    setProposals((current) =>
+      current.filter((proposal) => proposal.id !== id),
     )
 
-    if (!confirmed) return
-
-    setProposals((currentProposals) =>
-      currentProposals.filter(
-        (proposal) =>
-          proposal.id !== proposalId,
-      ),
-    )
-
-    showMessage(
-      'Propuesta eliminada correctamente.',
-    )
+    setNotification('Propuesta eliminada')
   }
 
-  /*
-   * Exportar propuesta
-   */
-  const exportProposal = (
-    proposal: CloudProposal,
-  ): void => {
-    const content = JSON.stringify(
-      proposal,
-      null,
-      2,
-    )
+  const recommendedServices = useMemo(() => {
+    const recommendations = new Set<string>()
 
-    const blob = new Blob(
-      [content],
-      {
-        type: 'application/json',
-      },
-    )
+    recommendations.add('EC2')
+    recommendations.add('S3')
 
-    const url = URL.createObjectURL(blob)
-
-    const link = document.createElement('a')
-
-    link.href = url
-
-    link.download = `${proposal.id}-${proposal.solutionName
-      .replace(/\s+/g, '-')
-      .toLowerCase()}.json`
-
-    document.body.appendChild(link)
-
-    link.click()
-
-    document.body.removeChild(link)
-
-    URL.revokeObjectURL(url)
-
-    showMessage(
-      'Propuesta exportada correctamente.',
-    )
-  }
-
-  /*
-   * Obtener nombre
-   */
-  const getServiceName = (
-    serviceId: string,
-  ): string => {
-    const service = awsServices.find(
-      (item) => item.id === serviceId,
-    )
-
-    return service?.name ?? serviceId
-  }
-
-  /*
-   * Obtener región
-   */
-  const getRegionLocation = (
-    regionCode: string,
-  ): string => {
-    const region = regions.find(
-      (item) => item.code === regionCode,
-    )
-
-    return region?.location ?? ''
-  }
-
-  /*
-   * Filtrar propuestas
-   */
-  const filteredProposals = useMemo(() => {
-    const normalizedSearch =
-      searchTerm.toLowerCase().trim()
-
-    if (!normalizedSearch) {
-      return proposals
+    if (availability === 'Alta' || availability === 'Crítica') {
+      recommendations.add('CloudFront')
+      recommendations.add('Route 53')
+      recommendations.add('VPC')
     }
 
-    return proposals.filter((proposal) => {
-      const content = [
-        proposal.id,
-        proposal.solutionName,
-        proposal.applicationType,
-        proposal.region,
-        proposal.description,
-        ...proposal.services,
-        ...proposal.migrationObjectives,
-      ]
-        .join(' ')
-        .toLowerCase()
+    if (users >= 500) {
+      recommendations.add('RDS')
+    }
 
-      return content.includes(
-        normalizedSearch,
-      )
-    })
-  }, [proposals, searchTerm])
+    if (availability === 'Crítica') {
+      recommendations.add('IAM')
+    }
 
-  const latestProposal =
-    proposals[0] ?? null
+    return Array.from(recommendations)
+  }, [availability, users])
 
   return (
-    <div className="space-y-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* =========================================
-            ENCABEZADO
-        ========================================= */}
-
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Cloud className="w-5 h-5 text-primary" />
-              </div>
-
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Cloud Solution Planner
-              </span>
-            </div>
-
-            <h1 className="text-main-title">
-              Planificación Cloud
-            </h1>
-
-            <p className="text-muted mt-1">
-              Diseña, configura y registra una propuesta
-              de solución en la nube.
-            </p>
-          </div>
-
-          {/* PROGRESO */}
-          <div className="card px-4 py-3 min-w-[280px]">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-primary" />
-
-                <span className="text-xs font-medium text-muted">
-                  Progreso de configuración
-                </span>
-              </div>
-
-              <span className="text-sm font-bold text-primary">
-                {progress}%
-              </span>
-            </div>
-
-            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-500"
-                style={{
-                  width: `${progress}%`,
-                }}
-              />
-            </div>
-
-            <p className="text-[11px] text-muted mt-2">
-              {completedFields} de 8 campos completados
-            </p>
-          </div>
-        </div>
-
-        {/* =========================================
-            MENSAJE
-        ========================================= */}
-
-        {successMessage && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 shadow-sm">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 shrink-0" />
-
-              <span>{successMessage}</span>
-            </div>
-
+    <div className="space-y-4">
+      {notification && (
+        <div className="fixed right-6 top-6 z-50">
+          <div className="card px-4 py-3 shadow-lg flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-security" />
+            <span className="text-sm font-medium">{notification}</span>
             <button
               type="button"
-              onClick={() =>
-                setSuccessMessage('')
-              }
-              className="text-blue-500 hover:text-blue-700"
+              onClick={() => setNotification('')}
+              className="text-muted hover:text-main"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* =========================================
-            CONFIGURACIONES RÁPIDAS
-        ========================================= */}
-
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <Zap className="w-5 h-5 text-costs" />
-
-            <h2 className="font-semibold text-main">
-              Configuraciones rápidas
-            </h2>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <div className="text-sm text-muted mb-1">
+            CloudOps Dashboard
           </div>
-
-          <p className="text-xs text-muted mb-4">
-            Utiliza una arquitectura base para
-            configurar rápidamente tu propuesta.
+          <h1 className="text-main-title">Planificación Cloud</h1>
+          <p className="text-muted mt-2">
+            Diseña y registra una propuesta de solución utilizando servicios
+            de AWS.
           </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {quickConfigurations.map(
-              (configuration) => {
-                const Icon =
-                  configuration.icon
-
-                return (
-                  <button
-                    key={configuration.id}
-                    type="button"
-                    onClick={() =>
-                      applyQuickConfiguration(
-                        configuration,
-                      )
-                    }
-                    className="group text-left p-4 rounded-xl border border-border bg-white hover:border-primary hover:bg-blue-50/40 transition-all hover:-translate-y-0.5"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-colors">
-                        <Icon className="w-5 h-5 text-primary group-hover:text-white" />
-                      </div>
-
-                      <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary transition-transform group-hover:translate-x-1" />
-                    </div>
-
-                    <h3 className="font-semibold text-main mt-3">
-                      {configuration.title}
-                    </h3>
-
-                    <p className="text-xs text-muted mt-1">
-                      {configuration.description}
-                    </p>
-
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      <span className="px-2 py-1 rounded bg-slate-100 text-muted text-[10px]">
-                        {configuration.services.length}{' '}
-                        servicios
-                      </span>
-
-                      <span className="px-2 py-1 rounded bg-blue-50 text-primary text-[10px]">
-                        {configuration.objectives.length}{' '}
-                        objetivos
-                      </span>
-
-                      <span className="px-2 py-1 rounded bg-green-50 text-green-700 text-[10px]">
-                        {configuration.availability.split(
-                          ' - ',
-                        )[0]}
-                      </span>
-                    </div>
-                  </button>
-                )
-              },
-            )}
-          </div>
         </div>
 
-        {/* =========================================
-            FORMULARIO + PANEL
-        ========================================= */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={saveDraft}
+            className="px-4 py-2 rounded-lg border border-border bg-white hover:bg-background flex items-center gap-2 text-sm"
+          >
+            <Save className="w-4 h-4" />
+            {draftSaved ? 'Guardado' : 'Guardar borrador'}
+          </button>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* FORMULARIO */}
+          <button
+            type="button"
+            onClick={resetForm}
+            className="px-4 py-2 rounded-lg bg-primary text-white hover:opacity-90 flex items-center gap-2 text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Nueva propuesta
+          </button>
+        </div>
+      </div>
 
-          <div className="xl:col-span-2 card p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Cloud className="w-5 h-5 text-primary" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {quickConfigurations.map((configuration) => (
+          <button
+            key={configuration.name}
+            type="button"
+            onClick={() => applyQuickConfiguration(configuration)}
+            className="card p-4 text-left hover:border-primary transition-colors"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold text-main">
+                  {configuration.name}
                 </div>
-
-                <div>
-                  <h2 className="text-lg font-semibold text-main">
-                    {editingId
-                      ? 'Editar propuesta Cloud'
-                      : 'Nueva propuesta Cloud'}
-                  </h2>
-
-                  <p className="text-sm text-muted">
-                    Completa los 8 campos de la solución.
-                  </p>
+                <div className="text-sm text-muted mt-1">
+                  {configuration.description}
                 </div>
               </div>
 
-              {editingId && (
-                <span className="text-xs font-semibold text-primary bg-blue-50 px-3 py-1.5 rounded-full">
-                  Editando {editingId}
-                </span>
-              )}
+              <Zap className="w-5 h-5 text-primary shrink-0" />
             </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-6"
-            >
-              {/* 1 + 2 */}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="text-xs px-2 py-1 rounded-full bg-background text-muted">
+                {configuration.users} usuarios
+              </span>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="solutionName"
-                    className="block text-sm font-medium text-main mb-2"
+              <span className="text-xs px-2 py-1 rounded-full bg-background text-muted">
+                {configuration.availability}
+              </span>
+
+              <span className="text-xs px-2 py-1 rounded-full bg-background text-muted">
+                {configuration.services.length} servicios
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="card p-4">
+        <div className="flex items-center justify-between gap-4 overflow-x-auto">
+          {steps.map((step, index) => {
+            const Icon = step.icon
+            const active = currentStep === step.number
+            const completed = currentStep > step.number
+
+            return (
+              <React.Fragment key={step.number}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (step.number < currentStep) {
+                      setCurrentStep(step.number as Step)
+                    }
+                  }}
+                  className="flex items-center gap-3 min-w-max"
+                >
+                  <div
+                    className={[
+                      'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
+                      completed
+                        ? 'bg-security text-white'
+                        : active
+                          ? 'bg-primary text-white'
+                          : 'bg-background text-muted',
+                    ].join(' ')}
                   >
-                    1. Nombre de la solución *
+                    {completed ? (
+                      <Check className="w-5 h-5" />
+                    ) : (
+                      <Icon className="w-5 h-5" />
+                    )}
+                  </div>
+
+                  <div className="hidden sm:block text-left">
+                    <div
+                      className={`text-sm font-semibold ${
+                        active || completed
+                          ? 'text-main'
+                          : 'text-muted'
+                      }`}
+                    >
+                      {step.title}
+                    </div>
+
+                    <div className="text-xs text-muted">
+                      {step.description}
+                    </div>
+                  </div>
+                </button>
+
+                {index < steps.length - 1 && (
+                  <div className="hidden md:block flex-1 h-px bg-border min-w-8" />
+                )}
+              </React.Fragment>
+            )
+          })}
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div className="xl:col-span-2 card p-5">
+            {currentStep === 1 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-semibold text-main">
+                    Información de la solución
+                  </h2>
+                  <p className="text-sm text-muted mt-1">
+                    Define los datos principales de la propuesta Cloud.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Nombre de la solución
                   </label>
 
                   <input
-                    id="solutionName"
-                    type="text"
                     value={solutionName}
                     onChange={(event) =>
-                      setSolutionName(
-                        event.target.value,
-                      )
+                      setSolutionName(event.target.value)
                     }
-                    placeholder="Ej. Portal E-Commerce Cloud"
-                    required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-main outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                    placeholder="Ej. Sistema de ventas Cloud"
+                    className="w-full border border-border rounded-lg px-3 py-2.5 outline-none focus:border-primary"
                   />
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="applicationType"
-                    className="block text-sm font-medium text-main mb-2"
-                  >
-                    2. Tipo de aplicación *
+                  <label className="block text-sm font-medium mb-2">
+                    Tipo de aplicación
                   </label>
 
                   <select
-                    id="applicationType"
                     value={applicationType}
                     onChange={(event) =>
-                      setApplicationType(
-                        event.target.value,
-                      )
+                      setApplicationType(event.target.value)
                     }
-                    required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-main outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                    className="w-full border border-border rounded-lg px-3 py-2.5 outline-none focus:border-primary bg-white"
                   >
-                    <option value="">
-                      Seleccionar tipo
-                    </option>
-
-                    {applicationOptions.map(
-                      (option) => (
-                        <option
-                          key={option}
-                          value={option}
-                        >
-                          {option}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              {/* 3 */}
-
-              <div>
-                <label
-                  htmlFor="description"
-                  className="block text-sm font-medium text-main mb-2"
-                >
-                  3. Descripción *
-                </label>
-
-                <textarea
-                  id="description"
-                  value={description}
-                  onChange={(event) =>
-                    setDescription(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Describe el alcance técnico y operativo de la propuesta..."
-                  rows={4}
-                  required
-                  className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-main outline-none resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
-                />
-
-                <div className="flex justify-between text-[11px] text-muted mt-1">
-                  <span>
-                    Describe brevemente la solución.
-                  </span>
-
-                  <span>
-                    {description.length} caracteres
-                  </span>
-                </div>
-              </div>
-
-              {/* 4 + 5 */}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="region"
-                    className="block text-sm font-medium text-main mb-2"
-                  >
-                    4. Región seleccionada *
-                  </label>
-
-                  <select
-                    id="region"
-                    value={selectedRegion}
-                    onChange={(event) =>
-                      setSelectedRegion(
-                        event.target.value,
-                      )
-                    }
-                    required
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-main outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
-                  >
-                    {regions.map((region) => (
-                      <option
-                        key={region.id}
-                        value={region.code}
-                      >
-                        {region.code} —{' '}
-                        {region.location}
+                    {applicationOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
                       </option>
                     ))}
                   </select>
-
-                  {currentRegion && (
-                    <div className="flex items-center gap-2 mt-2 text-[11px] text-muted">
-                      <MapPin className="w-3.5 h-3.5 text-primary" />
-
-                      <span>
-                        {currentRegion.location}
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="users"
-                    className="block text-sm font-medium text-main mb-2"
-                  >
-                    5. Número estimado de usuarios *
+                  <label className="block text-sm font-medium mb-2">
+                    Descripción
+                  </label>
+
+                  <textarea
+                    value={description}
+                    onChange={(event) =>
+                      setDescription(event.target.value)
+                    }
+                    rows={5}
+                    placeholder="Describe brevemente la solución que deseas planificar..."
+                    className="w-full border border-border rounded-lg px-3 py-2.5 outline-none focus:border-primary resize-none"
+                  />
+
+                  <div className="text-xs text-muted mt-1">
+                    Explica el propósito principal de la aplicación.
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Región AWS
                   </label>
 
                   <div className="relative">
-                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                    <MapPin className="absolute left-3 top-3 w-4 h-4 text-muted" />
 
-                    <input
-                      id="users"
-                      type="number"
-                      min="1"
-                      value={users}
+                    <select
+                      value={region}
                       onChange={(event) =>
-                        setUsers(
-                          event.target.value,
-                        )
+                        setRegion(event.target.value)
                       }
-                      placeholder="Ej. 10000"
-                      required
-                      className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-white text-main outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
-                    />
+                      className="w-full border border-border rounded-lg pl-9 pr-3 py-2.5 outline-none focus:border-primary bg-white"
+                    >
+                      {regions.map((item) => (
+                        <option key={item.code} value={item.code}>
+                          {item.code} - {item.location}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-
-                  {Number(users) > 0 && (
-                    <p className="text-[11px] text-muted mt-2">
-                      Capacidad estimada:{' '}
-                      <span className="font-semibold text-main">
-                        {Number(
-                          users,
-                        ).toLocaleString()}{' '}
-                        usuarios
-                      </span>
-                    </p>
-                  )}
                 </div>
               </div>
+            )}
 
-              {/* 6 */}
-
-              <div>
-                <label className="block text-sm font-medium text-main mb-3">
-                  6. Nivel de disponibilidad requerido *
-                </label>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {availabilityOptions.map(
-                    (option) => {
-                      const isSelected =
-                        availability ===
-                        option.value
-
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() =>
-                            setAvailability(
-                              option.value,
-                            )
-                          }
-                          className={[
-                            'text-left p-3 rounded-xl border transition-all',
-                            isSelected
-                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                              : 'border-border bg-white hover:border-primary/50 hover:bg-slate-50',
-                          ].join(' ')}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={[
-                                'w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold',
-                                isSelected
-                                  ? 'bg-primary text-white'
-                                  : 'bg-slate-100 text-muted',
-                              ].join(' ')}
-                            >
-                              {option.icon}
-                            </div>
-
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <span className="font-semibold text-sm text-main">
-                                  {option.label}
-                                </span>
-
-                                {isSelected && (
-                                  <CheckCircle2 className="w-4 h-4 text-primary" />
-                                )}
-                              </div>
-
-                              <p className="text-[11px] text-muted mt-0.5">
-                                {option.description}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      )
-                    },
-                  )}
+            {currentStep === 2 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-semibold text-main">
+                    Capacidad y disponibilidad
+                  </h2>
+                  <p className="text-sm text-muted mt-1">
+                    Define la cantidad estimada de usuarios y el nivel de
+                    disponibilidad.
+                  </p>
                 </div>
-              </div>
 
-              {/* 7 */}
-
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-main">
-                    7. Servicios Cloud seleccionados *
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Usuarios estimados
                   </label>
 
-                  <span className="text-xs font-semibold text-primary">
-                    {selectedServices.length}{' '}
-                    seleccionados
-                  </span>
+                  <div className="relative">
+                    <Users className="absolute left-3 top-3 w-4 h-4 text-muted" />
+
+                    <input
+                      type="number"
+                      min={1}
+                      value={users}
+                      onChange={(event) =>
+                        setUsers(Math.max(1, Number(event.target.value)))
+                      }
+                      className="w-full border border-border rounded-lg pl-9 pr-3 py-2.5 outline-none focus:border-primary"
+                    />
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {awsServices.map((service) => {
-                    const isSelected =
-                      selectedServices.includes(
-                        service.id,
-                      )
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {availabilityOptions.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setAvailability(option)}
+                      className={[
+                        'p-4 rounded-lg border text-left transition-colors',
+                        availability === option
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">{option}</span>
 
-                    const Icon =
-                      serviceIcons[
-                        service.id
-                      ] ?? Cloud
+                        {availability === option && (
+                          <Check className="w-4 h-4 text-primary" />
+                        )}
+                      </div>
+
+                      <div className="text-xs text-muted mt-2">
+                        {option === 'Básica' &&
+                          'Para soluciones de baja demanda.'}
+
+                        {option === 'Alta' &&
+                          'Para aplicaciones que requieren mayor disponibilidad.'}
+
+                        {option === 'Crítica' &&
+                          'Para soluciones con alta exigencia de continuidad.'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="card p-4 bg-background">
+                  <div className="flex items-center gap-3">
+                    <Calculator className="w-5 h-5 text-primary" />
+
+                    <div>
+                      <div className="font-semibold">
+                        Nivel de capacidad
+                      </div>
+                      <div className="text-sm text-muted">
+                        Capacidad estimada: {capacityLevel}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="card p-4">
+                    <div className="text-sm text-muted">
+                      Usuarios
+                    </div>
+                    <div className="text-2xl font-bold mt-1">
+                      {users.toLocaleString('es-PE')}
+                    </div>
+                  </div>
+
+                  <div className="card p-4">
+                    <div className="text-sm text-muted">
+                      Disponibilidad
+                    </div>
+                    <div className="text-2xl font-bold mt-1">
+                      {availability}
+                    </div>
+                  </div>
+
+                  <div className="card p-4">
+                    <div className="text-sm text-muted">
+                      Región
+                    </div>
+                    <div className="text-lg font-bold mt-2">
+                      {region}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 3 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-semibold text-main">
+                    Servicios AWS
+                  </h2>
+                  <p className="text-sm text-muted mt-1">
+                    Selecciona los servicios que formarán parte de la
+                    solución.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {awsServices.map((service) => {
+                    const selected = selectedServices.includes(
+                      service.name,
+                    )
+                    const Icon = getServiceIcon(service.name)
 
                     return (
                       <button
                         key={service.id}
                         type="button"
-                        onClick={() =>
-                          toggleService(
-                            service.id,
-                          )
-                        }
+                        onClick={() => toggleService(service.name)}
                         className={[
-                          'group text-left p-3 rounded-xl border transition-all',
-                          isSelected
-                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                            : 'border-border bg-white hover:border-primary/50 hover:bg-slate-50',
+                          'p-4 rounded-lg border text-left transition-all',
+                          selected
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary',
                         ].join(' ')}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div
-                            className={[
-                              'w-9 h-9 rounded-lg flex items-center justify-center transition-colors',
-                              isSelected
-                                ? 'bg-primary text-white'
-                                : 'bg-slate-100 text-muted group-hover:bg-blue-50 group-hover:text-primary',
-                            ].join(' ')}
-                          >
-                            <Icon className="w-4 h-4" />
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={[
+                                'w-10 h-10 rounded-lg flex items-center justify-center',
+                                selected
+                                  ? 'bg-primary text-white'
+                                  : 'bg-background text-muted',
+                              ].join(' ')}
+                            >
+                              <Icon className="w-5 h-5" />
+                            </div>
+
+                            <div>
+                              <div className="font-semibold">
+                                {service.name}
+                              </div>
+
+                              <div className="text-xs text-muted">
+                                {service.category}
+                              </div>
+                            </div>
                           </div>
 
-                          <div
-                            className={[
-                              'w-5 h-5 rounded-md border flex items-center justify-center shrink-0',
-                              isSelected
-                                ? 'bg-primary border-primary'
-                                : 'border-border',
-                            ].join(' ')}
-                          >
-                            {isSelected && (
-                              <Check className="w-3.5 h-3.5 text-white" />
-                            )}
-                          </div>
+                          {selected && (
+                            <Check className="w-5 h-5 text-primary shrink-0" />
+                          )}
                         </div>
 
-                        <div className="mt-3">
-                          <div className="font-semibold text-sm text-main">
-                            {service.name}
-                          </div>
-
-                          <div className="text-[11px] text-primary mt-0.5">
-                            {service.category}
-                          </div>
-
-                          <p className="text-[10px] text-muted mt-2 line-clamp-2 leading-relaxed">
-                            {service.description}
-                          </p>
+                        <div className="text-sm text-muted mt-3">
+                          {service.description}
                         </div>
                       </button>
                     )
                   })}
                 </div>
-              </div>
 
-              {/* 8 */}
+                <div className="card p-4 bg-background">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold">
+                        Servicios seleccionados
+                      </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-main">
-                    8. Objetivo de la migración *
-                  </label>
+                      <div className="text-sm text-muted mt-1">
+                        {selectedServices.length} servicio(s)
+                      </div>
+                    </div>
 
-                  <span className="text-xs font-semibold text-primary">
-                    {migrationObjectives.length}{' '}
-                    seleccionados
-                  </span>
-                </div>
+                    <div className="text-2xl font-bold text-primary">
+                      {selectedServices.length}
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {migrationOptions.map(
-                    (objective) => {
-                      const isSelected =
-                        migrationObjectives.includes(
-                          objective,
-                        )
-
-                      return (
-                        <button
-                          key={objective}
-                          type="button"
-                          onClick={() =>
-                            toggleMigrationObjective(
-                              objective,
-                            )
-                          }
-                          className={[
-                            'text-left p-3 rounded-lg border transition-all',
-                            isSelected
-                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                              : 'border-border bg-white hover:border-primary/50 hover:bg-slate-50',
-                          ].join(' ')}
+                  {selectedServices.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {selectedServices.map((service) => (
+                        <span
+                          key={service}
+                          className="px-3 py-1.5 rounded-full bg-white border border-border text-sm flex items-center gap-2"
                         >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={[
-                                'w-5 h-5 rounded-md border flex items-center justify-center shrink-0',
-                                isSelected
-                                  ? 'bg-primary border-primary'
-                                  : 'border-border',
-                              ].join(' ')}
-                            >
-                              {isSelected ? (
-                                <Check className="w-3 h-3 text-white" />
-                              ) : (
-                                <Circle className="w-3 h-3 text-transparent" />
-                              )}
-                            </div>
+                          {service}
 
-                            <span className="text-sm text-main">
-                              {objective}
-                            </span>
-                          </div>
-                        </button>
-                      )
-                    },
+                          <button
+                            type="button"
+                            onClick={() => toggleService(service)}
+                            className="text-muted hover:text-alerts"
+                            aria-label={`Quitar ${service}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   )}
-                </div>
-              </div>
-
-              {/* BOTONES */}
-
-              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-3 border-t border-border">
-                <button
-                  type="button"
-                  onClick={() => resetForm()}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-white text-main font-medium hover:bg-slate-50 transition-colors text-sm"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Limpiar
-                </button>
-
-                <button
-                  type="submit"
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-blue-700 transition-colors text-sm shadow-sm"
-                >
-                  <Save className="w-4 h-4" />
-
-                  {editingId
-                    ? 'Actualizar propuesta'
-                    : 'Registrar propuesta'}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* =========================================
-              PANEL DERECHO
-          ========================================= */}
-
-          <div className="space-y-4">
-            {/* RESUMEN */}
-
-            <div className="card p-5">
-              <div className="flex items-center gap-2 mb-1">
-                <Activity className="w-5 h-5 text-primary" />
-
-                <h2 className="font-semibold text-main">
-                  Resumen en tiempo real
-                </h2>
-              </div>
-
-              <p className="text-xs text-muted">
-                Vista previa de la propuesta actual.
-              </p>
-
-              <div className="grid grid-cols-2 gap-2 mt-4">
-                <div className="p-3 rounded-lg bg-slate-50">
-                  <div className="text-[11px] text-muted">
-                    Servicios
-                  </div>
-
-                  <div className="text-xl font-bold text-main mt-1">
-                    {selectedServices.length}
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-lg bg-slate-50">
-                  <div className="text-[11px] text-muted">
-                    Objetivos
-                  </div>
-
-                  <div className="text-xl font-bold text-main mt-1">
-                    {migrationObjectives.length}
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-lg bg-slate-50">
-                  <div className="text-[11px] text-muted">
-                    Usuarios
-                  </div>
-
-                  <div className="text-xl font-bold text-main mt-1">
-                    {users
-                      ? Number(
-                          users,
-                        ).toLocaleString()
-                      : '0'}
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-lg bg-slate-50">
-                  <div className="text-[11px] text-muted">
-                    Disponibilidad
-                  </div>
-
-                  <div className="text-sm font-bold text-main mt-2">
-                    {availability
-                      ? availability.split(
-                          ' - ',
-                        )[0]
-                      : 'N/D'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* COSTOS */}
-
-            <div className="card p-5">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
-                  <DollarSign className="w-4 h-4 text-costs" />
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-main text-sm">
-                    Costo estimado
-                  </h3>
-
-                  <p className="text-[11px] text-muted">
-                    Según servicios seleccionados
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className="text-[11px] text-muted">
-                      Mensual
-                    </p>
-
-                    <p className="text-2xl font-bold text-main">
-                      $
-                      {estimatedMonthlyCost.toFixed(
-                        2,
-                      )}
-                    </p>
-                  </div>
-
-                  <TrendingUp className="w-5 h-5 text-costs" />
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-border">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted">
-                      Proyección anual
-                    </span>
-
-                    <span className="font-bold text-main">
-                      $
-                      {estimatedAnnualCost.toFixed(
-                        2,
-                      )}
+                  <div className="flex items-center gap-2 mb-3">
+                    <Zap className="w-4 h-4 text-costs" />
+                    <span className="font-semibold">
+                      Servicios recomendados
                     </span>
                   </div>
-                </div>
-              </div>
 
-              <p className="text-[10px] text-muted mt-3">
-                * Valores simulados para fines
-                académicos.
-              </p>
-            </div>
-
-            {/* DESGLOSE DE COSTOS */}
-
-            {serviceCosts.length > 0 && (
-              <div className="card p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <BarChart3 className="w-4 h-4 text-primary" />
-
-                  <h3 className="font-semibold text-main text-sm">
-                    Distribución de costos
-                  </h3>
-                </div>
-
-                <div className="space-y-3">
-                  {serviceCosts.map(
-                    (item) => {
-                      const percentage =
-                        estimatedMonthlyCost > 0
-                          ? (item.monthlyCost /
-                              estimatedMonthlyCost) *
-                            100
-                          : 0
-
-                      return (
-                        <div key={item.id}>
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="font-medium text-main">
-                              {item.name}
-                            </span>
-
-                            <span className="text-muted">
-                              $
-                              {item.monthlyCost.toFixed(
-                                2,
-                              )}
-                            </span>
-                          </div>
-
-                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full transition-all"
-                              style={{
-                                width: `${percentage}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    },
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {recommendedServices.map((service) => (
+                      <button
+                        key={service}
+                        type="button"
+                        onClick={() => {
+                          if (!selectedServices.includes(service)) {
+                            setSelectedServices((current) => [
+                              ...current,
+                              service,
+                            ])
+                          }
+                        }}
+                        className={[
+                          'px-3 py-1.5 rounded-full text-xs border',
+                          selectedServices.includes(service)
+                            ? 'border-security text-security bg-security/5'
+                            : 'border-border text-muted hover:border-primary',
+                        ].join(' ')}
+                      >
+                        {service}
+                        {selectedServices.includes(service) && ' ✓'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* REGIÓN */}
+            {currentStep === 4 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-semibold text-main">
+                    Objetivos de migración
+                  </h2>
 
+                  <p className="text-sm text-muted mt-1">
+                    Selecciona los objetivos principales de la propuesta.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {migrationOptions.map((objective) => {
+                    const selected =
+                      migrationObjectives.includes(objective)
+
+                    return (
+                      <button
+                        key={objective}
+                        type="button"
+                        onClick={() => toggleObjective(objective)}
+                        className={[
+                          'w-full p-4 rounded-lg border text-left flex items-center justify-between transition-colors',
+                          selected
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary',
+                        ].join(' ')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={[
+                              'w-9 h-9 rounded-lg flex items-center justify-center',
+                              selected
+                                ? 'bg-primary text-white'
+                                : 'bg-background text-muted',
+                            ].join(' ')}
+                          >
+                            {selected ? (
+                              <Check className="w-4 h-4" />
+                            ) : (
+                              <ArrowRight className="w-4 h-4" />
+                            )}
+                          </div>
+
+                          <span className="font-medium">
+                            {objective}
+                          </span>
+                        </div>
+
+                        {selected && (
+                          <span className="text-xs font-semibold text-primary">
+                            Seleccionado
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="card p-4 bg-background">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-costs mt-0.5" />
+
+                    <div>
+                      <div className="font-semibold">
+                        Objetivos seleccionados
+                      </div>
+
+                      <div className="text-sm text-muted mt-1">
+                        {migrationObjectives.length > 0
+                          ? migrationObjectives.join(', ')
+                          : 'No se ha seleccionado ningún objetivo.'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 5 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-semibold text-main">
+                    Resumen de la propuesta
+                  </h2>
+
+                  <p className="text-sm text-muted mt-1">
+                    Revisa la información antes de registrar la propuesta.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="card p-4">
+                    <div className="text-sm text-muted">
+                      Nombre
+                    </div>
+                    <div className="font-semibold mt-1">
+                      {solutionName || 'Sin nombre'}
+                    </div>
+                  </div>
+
+                  <div className="card p-4">
+                    <div className="text-sm text-muted">
+                      Tipo de aplicación
+                    </div>
+                    <div className="font-semibold mt-1">
+                      {applicationType}
+                    </div>
+                  </div>
+
+                  <div className="card p-4">
+                    <div className="text-sm text-muted">
+                      Región
+                    </div>
+                    <div className="font-semibold mt-1">
+                      {region}
+                    </div>
+                    <div className="text-xs text-muted mt-1">
+                      {getRegionLocation(region)}
+                    </div>
+                  </div>
+
+                  <div className="card p-4">
+                    <div className="text-sm text-muted">
+                      Usuarios estimados
+                    </div>
+                    <div className="font-semibold mt-1">
+                      {users.toLocaleString('es-PE')}
+                    </div>
+                  </div>
+
+                  <div className="card p-4">
+                    <div className="text-sm text-muted">
+                      Disponibilidad
+                    </div>
+                    <div className="font-semibold mt-1">
+                      {availability}
+                    </div>
+                  </div>
+
+                  <div className="card p-4">
+                    <div className="text-sm text-muted">
+                      Servicios
+                    </div>
+                    <div className="font-semibold mt-1">
+                      {selectedServices.length}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card p-4">
+                  <div className="text-sm text-muted">
+                    Descripción
+                  </div>
+                  <div className="mt-2 text-sm">
+                    {description || 'Sin descripción'}
+                  </div>
+                </div>
+
+                <div className="card p-4">
+                  <div className="text-sm text-muted mb-3">
+                    Servicios AWS seleccionados
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {selectedServices.map((service) => (
+                      <span
+                        key={service}
+                        className="px-3 py-1.5 rounded-full bg-background border border-border text-sm"
+                      >
+                        {service}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="card p-4">
+                  <div className="text-sm text-muted mb-3">
+                    Objetivos
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {migrationObjectives.map((objective) => (
+                      <span
+                        key={objective}
+                        className="px-3 py-1.5 rounded-full bg-background border border-border text-sm"
+                      >
+                        {objective}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="card p-4">
+                    <div className="flex items-center gap-2 text-muted">
+                      <DollarSign className="w-4 h-4" />
+                      <span className="text-sm">
+                        Costo mensual
+                      </span>
+                    </div>
+
+                    <div className="text-2xl font-bold mt-2">
+                      ${monthlyCost.toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div className="card p-4">
+                    <div className="flex items-center gap-2 text-muted">
+                      <Calculator className="w-4 h-4" />
+                      <span className="text-sm">
+                        Costo anual
+                      </span>
+                    </div>
+
+                    <div className="text-2xl font-bold mt-2">
+                      ${annualCost.toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div className="card p-4">
+                    <div className="text-sm text-muted">
+                      Preparación
+                    </div>
+
+                    <div
+                      className={`text-2xl font-bold mt-2 ${readinessClass()}`}
+                    >
+                      {readiness}%
+                    </div>
+
+                    <div className="text-xs text-muted mt-1">
+                      {readinessLabel()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3 mt-8 pt-5 border-t border-border">
+              <button
+                type="button"
+                onClick={previousStep}
+                disabled={currentStep === 1}
+                className={[
+                  'px-4 py-2.5 rounded-lg border border-border flex items-center gap-2',
+                  currentStep === 1
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-background',
+                ].join(' ')}
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Anterior
+              </button>
+
+              {currentStep < 5 ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="px-5 py-2.5 rounded-lg bg-primary text-white flex items-center gap-2 hover:opacity-90"
+                >
+                  Siguiente
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-lg bg-security text-white flex items-center gap-2 hover:opacity-90"
+                >
+                  <Save className="w-4 h-4" />
+                  {editingId
+                    ? 'Actualizar propuesta'
+                    : 'Registrar propuesta'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-5">
             <div className="card p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <MapPin className="w-4 h-4 text-primary" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold">
+                    Resumen actual
+                  </div>
 
-                <h3 className="font-semibold text-main text-sm">
-                  Región seleccionada
-                </h3>
+                  <div className="text-xs text-muted mt-1">
+                    Estado de la planificación
+                  </div>
+                </div>
+
+                <Cloud className="w-6 h-6 text-primary" />
               </div>
 
-              <div className="p-3 rounded-lg bg-blue-50/60">
-                <p className="text-sm font-bold text-main">
-                  {selectedRegion}
-                </p>
-
-                <p className="text-xs text-muted mt-1">
-                  {currentRegion?.location}
-                </p>
-
-                <div className="flex items-center justify-between mt-3">
-                  <span className="flex items-center gap-2 text-[11px] text-muted">
-                    <span className="w-2 h-2 rounded-full bg-security" />
-                    Región disponible
+              <div className="mt-5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted">
+                    Preparación
                   </span>
 
-                  <span className="text-[10px] font-medium text-primary">
-                    {currentRegion?.deployedServices.length ?? 0}{' '}
-                    servicios base
+                  <span className={`font-semibold ${readinessClass()}`}>
+                    {readiness}%
+                  </span>
+                </div>
+
+                <div className="w-full h-2.5 rounded-full bg-background mt-2 overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all"
+                    style={{ width: `${readiness}%` }}
+                  />
+                </div>
+
+                <div className={`text-sm font-medium mt-2 ${readinessClass()}`}>
+                  {readinessLabel()}
+                </div>
+              </div>
+
+              <div className="space-y-3 mt-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted">
+                    Región
+                  </span>
+                  <span className="text-sm font-medium">
+                    {region}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted">
+                    Usuarios
+                  </span>
+                  <span className="text-sm font-medium">
+                    {users.toLocaleString('es-PE')}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted">
+                    Servicios
+                  </span>
+                  <span className="text-sm font-medium">
+                    {selectedServices.length}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted">
+                    Costo mensual
+                  </span>
+                  <span className="text-sm font-semibold">
+                    ${monthlyCost.toFixed(2)}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* ARQUITECTURA */}
-
             <div className="card p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Layers className="w-4 h-4 text-primary" />
-
-                <h3 className="font-semibold text-main text-sm">
-                  Arquitectura seleccionada
-                </h3>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" />
+                <div className="font-semibold">
+                  Región seleccionada
+                </div>
               </div>
 
-              {selectedServiceData.length > 0 ? (
-                <div className="space-y-2">
-                  {selectedServiceData.map(
-                    (service) => {
-                      const Icon =
-                        serviceIcons[
-                          service.id
-                        ] ?? Cloud
-
-                      return (
-                        <div
-                          key={service.id}
-                          className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50"
-                        >
-                          <div className="w-7 h-7 rounded-md bg-white border border-border flex items-center justify-center">
-                            <Icon className="w-3.5 h-3.5 text-primary" />
-                          </div>
-
-                          <div className="flex-1">
-                            <p className="text-xs font-semibold text-main">
-                              {service.name}
-                            </p>
-
-                            <p className="text-[10px] text-muted">
-                              {service.category}
-                            </p>
-                          </div>
-
-                          <CheckCircle2 className="w-4 h-4 text-security" />
-                        </div>
-                      )
-                    },
-                  )}
+              <div className="mt-4">
+                <div className="text-lg font-bold">
+                  {region}
                 </div>
-              ) : (
-                <div className="text-center py-5 border border-dashed border-border rounded-lg">
-                  <Cloud className="w-6 h-6 text-muted mx-auto" />
 
-                  <p className="text-xs text-muted mt-2">
-                    Selecciona servicios para visualizar
-                    la arquitectura.
-                  </p>
+                <div className="text-sm text-muted mt-1">
+                  {getRegionLocation(region)}
+                </div>
+              </div>
+
+              {selectedRegionData && (
+                <div className="mt-4">
+                  <div className="text-xs text-muted mb-2">
+                    Servicios planificados en esta región
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {selectedRegionData.plannedServices.map(
+                      (service) => (
+                        <span
+                          key={service}
+                          className="text-xs px-2 py-1 rounded-full bg-background border border-border"
+                        >
+                          {service}
+                        </span>
+                      ),
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* BOTÓN PREVISUALIZAR */}
+            <div className="card p-5">
+              <div className="flex items-center gap-2">
+                <Network className="w-5 h-5 text-security" />
+                <div className="font-semibold">
+                  Arquitectura propuesta
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-background text-sm">
+                  <Globe2 className="w-4 h-4 text-primary" />
+                  Internet
+                </div>
+
+                <div className="flex justify-center">
+                  <ArrowDownIcon />
+                </div>
+
+                {selectedServices.includes('Route 53') && (
+                  <>
+                    <div className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-background text-sm">
+                      <Globe2 className="w-4 h-4 text-primary" />
+                      Route 53
+                    </div>
+
+                    <div className="flex justify-center">
+                      <ArrowDownIcon />
+                    </div>
+                  </>
+                )}
+
+                {selectedServices.includes('CloudFront') && (
+                  <>
+                    <div className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-background text-sm">
+                      <Wifi className="w-4 h-4 text-primary" />
+                      CloudFront
+                    </div>
+
+                    <div className="flex justify-center">
+                      <ArrowDownIcon />
+                    </div>
+                  </>
+                )}
+
+                {selectedServices.includes('VPC') && (
+                  <>
+                    <div className="flex items-center justify-center gap-2 p-2.5 rounded-lg bg-background text-sm">
+                      <Network className="w-4 h-4 text-security" />
+                      VPC
+                    </div>
+
+                    <div className="flex justify-center">
+                      <ArrowDownIcon />
+                    </div>
+                  </>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedServices.includes('EC2') && (
+                    <div className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-background text-sm">
+                      <Server className="w-5 h-5 text-primary" />
+                      EC2
+                    </div>
+                  )}
+
+                  {selectedServices.includes('RDS') && (
+                    <div className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-background text-sm">
+                      <Database className="w-5 h-5 text-primary" />
+                      RDS
+                    </div>
+                  )}
+
+                  {selectedServices.includes('S3') && (
+                    <div className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-background text-sm">
+                      <HardDrive className="w-5 h-5 text-primary" />
+                      S3
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div className="card">
+        <div className="p-5 border-b border-border flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">
+              Propuestas registradas
+            </h2>
+
+            <p className="text-sm text-muted mt-1">
+              Historial de propuestas de planificación Cloud.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted" />
+
+              <input
+                value={searchTerm}
+                onChange={(event) =>
+                  setSearchTerm(event.target.value)
+                }
+                placeholder="Buscar propuesta..."
+                className="border border-border rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-primary"
+              />
+            </div>
 
             <button
               type="button"
-              onClick={() =>
-                setShowPreview(
-                  !showPreview,
-                )
-              }
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-primary bg-white text-primary font-medium hover:bg-blue-50 transition-colors text-sm"
+              onClick={() => setShowHistory((current) => !current)}
+              className="px-3 py-2 rounded-lg border border-border hover:bg-background text-sm"
             >
-              <Eye className="w-4 h-4" />
-
-              {showPreview
-                ? 'Ocultar vista previa'
-                : 'Ver vista previa'}
+              {showHistory ? 'Ocultar' : 'Mostrar'}
             </button>
           </div>
         </div>
 
-        {/* =========================================
-            VISTA PREVIA
-        ========================================= */}
+        {showHistory && (
+          <div className="p-5">
+            {filteredProposals.length === 0 ? (
+              <div className="py-10 text-center">
+                <Archive className="w-10 h-10 text-muted mx-auto" />
 
-        {showPreview && (
-          <div className="card p-6 border-primary/30">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-primary" />
-
-                  <h2 className="text-lg font-semibold text-main">
-                    Vista previa de la solución
-                  </h2>
+                <div className="font-semibold mt-3">
+                  No hay propuestas registradas
                 </div>
 
-                <p className="text-xs text-muted mt-1">
-                  Así quedaría configurada la propuesta.
-                </p>
-              </div>
-
-              <span className="text-xs font-semibold text-primary bg-blue-50 px-3 py-1.5 rounded-full">
-                {progress}% completado
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 p-5 rounded-xl bg-slate-50 border border-border">
-              <div className="px-4 py-3 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-sm">
-                INTERNET
-              </div>
-
-              {selectedServices.includes(
-                'route53',
-              ) && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-muted" />
-
-                  <div className="px-4 py-3 rounded-xl bg-white border border-border text-xs font-semibold">
-                    Route 53
-                  </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                'cloudfront',
-              ) && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-muted" />
-
-                  <div className="px-4 py-3 rounded-xl bg-white border border-border text-xs font-semibold">
-                    CloudFront
-                  </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                'vpc',
-              ) && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-muted" />
-
-                  <div className="px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-700">
-                    VPC
-                  </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                'ec2',
-              ) && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-muted" />
-
-                  <div className="px-4 py-3 rounded-xl bg-white border border-border text-xs font-semibold">
-                    EC2
-                  </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                'rds',
-              ) && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-muted" />
-
-                  <div className="px-4 py-3 rounded-xl bg-white border border-border text-xs font-semibold">
-                    RDS
-                  </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                's3',
-              ) && (
-                <>
-                  <span className="text-muted font-bold">
-                    +
-                  </span>
-
-                  <div className="px-4 py-3 rounded-xl bg-white border border-border text-xs font-semibold">
-                    S3
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
-              <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
-                <div className="text-[11px] text-blue-600">
-                  Región
-                </div>
-
-                <div className="font-bold text-main mt-1">
-                  {selectedRegion}
+                <div className="text-sm text-muted mt-1">
+                  Registra una propuesta para verla en este historial.
                 </div>
               </div>
-
-              <div className="p-4 rounded-xl bg-green-50 border border-green-100">
-                <div className="text-[11px] text-green-600">
-                  Disponibilidad
-                </div>
-
-                <div className="font-bold text-main mt-1">
-                  {availability
-                    ? availability.split(
-                        ' - ',
-                      )[0]
-                    : 'No definida'}
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
-                <div className="text-[11px] text-amber-600">
-                  Costo mensual
-                </div>
-
-                <div className="font-bold text-main mt-1">
-                  $
-                  {estimatedMonthlyCost.toFixed(
-                    2,
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* =========================================
-            ÚLTIMA PROPUESTA
-        ========================================= */}
-
-        {latestProposal && (
-          <div className="card overflow-hidden">
-            <div className="p-5 border-b border-border bg-gradient-to-r from-blue-50/70 to-white">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-primary" />
-
-                    <span className="text-xs font-bold uppercase tracking-wide text-primary">
-                      Última propuesta registrada
-                    </span>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="min-w-[820px]">
+                  <div className="grid grid-cols-[1.6fr_1fr_1fr_0.9fr_0.7fr] gap-3 border-b border-border pb-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                    <span>Solución</span>
+                    <span>Región</span>
+                    <span>Usuarios</span>
+                    <span>Costo</span>
+                    <span className="text-right">Acciones</span>
                   </div>
 
-                  <h2 className="text-xl font-bold text-main mt-2">
-                    {latestProposal.solutionName}
-                  </h2>
-
-                  <p className="text-xs text-muted mt-1">
-                    {latestProposal.applicationType}{' '}
-                    · {latestProposal.region}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      editProposal(
-                        latestProposal,
-                      )
-                    }
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-white text-main text-xs font-medium hover:bg-slate-50"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    Editar
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      duplicateProposal(
-                        latestProposal,
-                      )
-                    }
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-white text-main text-xs font-medium hover:bg-slate-50"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    Duplicar
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      exportProposal(
-                        latestProposal,
-                      )
-                    }
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-white text-main text-xs font-medium hover:bg-slate-50"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Exportar
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-[11px] text-muted">
-                  Usuarios
-                </p>
-
-                <p className="font-bold text-main mt-1">
-                  {latestProposal.users.toLocaleString()}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[11px] text-muted">
-                  Disponibilidad
-                </p>
-
-                <p className="font-bold text-security mt-1">
-                  {
-                    latestProposal.availability.split(
-                      ' - ',
-                    )[0]
-                  }
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[11px] text-muted">
-                  Costo mensual
-                </p>
-
-                <p className="font-bold text-main mt-1">
-                  $
-                  {latestProposal.monthlyCost.toFixed(
-                    2,
-                  )}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[11px] text-muted">
-                  Registrado
-                </p>
-
-                <p className="font-bold text-main mt-1">
-                  {latestProposal.createdAt}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* =========================================
-            HISTORIAL
-        ========================================= */}
-
-        <div className="card p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
-            <div className="flex items-center gap-2">
-              <Layers className="w-5 h-5 text-primary" />
-
-              <div>
-                <h2 className="text-lg font-semibold text-main">
-                  Historial de propuestas
-                </h2>
-
-                <p className="text-xs text-muted mt-0.5">
-                  Las propuestas permanecen guardadas
-                  aunque actualices la página.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(event) =>
-                    setSearchTerm(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Buscar propuesta..."
-                  className="w-full sm:w-64 pl-9 pr-3 py-2 rounded-lg border border-border bg-white text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                />
-              </div>
-
-              <span className="inline-flex items-center justify-center text-xs font-semibold px-3 py-2 rounded-lg bg-slate-100 text-muted">
-                {filteredProposals.length}{' '}
-                resultados
-              </span>
-            </div>
-          </div>
-
-          {filteredProposals.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border bg-slate-50 text-muted font-semibold">
-                    <th className="p-3">
-                      ID
-                    </th>
-
-                    <th className="p-3">
-                      Solución
-                    </th>
-
-                    <th className="p-3">
-                      Región
-                    </th>
-
-                    <th className="p-3">
-                      Usuarios
-                    </th>
-
-                    <th className="p-3">
-                      Servicios
-                    </th>
-
-                    <th className="p-3">
-                      Costo mensual
-                    </th>
-
-                    <th className="p-3">
-                      Fecha
-                    </th>
-
-                    <th className="p-3">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {filteredProposals.map(
-                    (proposal) => (
-                      <tr
+                  <div className="space-y-2 mt-3">
+                    {filteredProposals.map((proposal) => (
+                      <div
                         key={proposal.id}
-                        className="border-b border-border hover:bg-slate-50/60 transition-colors"
+                        className="grid grid-cols-[1.6fr_1fr_1fr_0.9fr_0.7fr] items-center gap-3 border border-border rounded-lg px-3 py-2.5 bg-background/40"
                       >
-                        <td className="p-3">
-                          <span className="font-bold text-primary">
-                            {proposal.id}
-                          </span>
-                        </td>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-main">
+                              {proposal.solutionName}
+                            </span>
 
-                        <td className="p-3">
-                          <div>
-                            <p className="font-semibold text-main">
-                              {
-                                proposal.solutionName
-                              }
-                            </p>
-
-                            <p className="text-[10px] text-muted mt-0.5">
-                              {
-                                proposal.applicationType
-                              }
-                            </p>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-security/5 text-security">
+                              {proposal.readiness}%
+                            </span>
                           </div>
-                        </td>
 
-                        <td className="p-3">
-                          <div>
-                            <p className="font-medium text-main">
-                              {proposal.region}
-                            </p>
-
-                            <p className="text-[10px] text-muted">
-                              {getRegionLocation(
-                                proposal.region,
-                              )}
-                            </p>
+                          <div className="text-[11px] text-muted mt-1">
+                            {proposal.applicationType}
                           </div>
-                        </td>
+                        </div>
 
-                        <td className="p-3 font-medium">
-                          {proposal.users.toLocaleString()}
-                        </td>
+                        <div className="text-sm text-main">
+                          {proposal.region}
+                        </div>
 
-                        <td className="p-3">
-                          <div className="flex flex-wrap gap-1 max-w-xs">
-                            {proposal.services.map(
-                              (serviceId) => (
-                                <span
-                                  key={serviceId}
-                                  className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px]"
-                                >
-                                  {getServiceName(
-                                    serviceId,
-                                  )}
-                                </span>
-                              ),
-                            )}
+                        <div className="text-sm text-main">
+                          {proposal.users.toLocaleString('es-PE')}
+                        </div>
+
+                        <div>
+                          <div className="text-sm font-semibold text-main">
+                            ${proposal.monthlyCost.toFixed(2)}
                           </div>
-                        </td>
-
-                        <td className="p-3">
-                          <span className="font-bold text-main">
-                            $
-                            {proposal.monthlyCost.toFixed(
-                              2,
-                            )}
-                          </span>
-                        </td>
-
-                        <td className="p-3 text-muted">
-                          {
-                            proposal.createdAt
-                          }
-                        </td>
-
-                        <td className="p-3">
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                editProposal(
-                                  proposal,
-                                )
-                              }
-                              title="Editar"
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-blue-50 transition-colors"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                duplicateProposal(
-                                  proposal,
-                                )
-                              }
-                              title="Duplicar"
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors"
-                            >
-                              <Copy className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                exportProposal(
-                                  proposal,
-                                )
-                              }
-                              title="Exportar"
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                deleteProposal(
-                                  proposal.id,
-                                )
-                              }
-                              title="Eliminar"
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                          <div className="text-[11px] text-muted">
+                            {proposal.createdAt}
                           </div>
-                        </td>
-                      </tr>
-                    ),
-                  )}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-10 border border-dashed border-border rounded-xl">
-              <Search className="w-9 h-9 text-muted mx-auto" />
+                        </div>
 
-              <h3 className="font-semibold text-main mt-3">
-                {proposals.length > 0
-                  ? 'No se encontraron propuestas'
-                  : 'No hay propuestas registradas'}
-              </h3>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => editProposal(proposal)}
+                            className="p-2 rounded-lg border border-border hover:bg-background"
+                            title="Editar"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
 
-              <p className="text-xs text-muted mt-1">
-                {proposals.length > 0
-                  ? 'Prueba con otro término de búsqueda.'
-                  : 'Completa el formulario superior para registrar tu primera solución Cloud.'}
-              </p>
+                          <button
+                            type="button"
+                            onClick={() => duplicateProposal(proposal)}
+                            className="p-2 rounded-lg border border-border hover:bg-background"
+                            title="Duplicar"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
 
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSearchTerm('')
-                  }
-                  className="mt-3 text-xs font-medium text-primary hover:underline"
-                >
-                  Limpiar búsqueda
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* =========================================
-            ARQUITECTURA FINAL
-        ========================================= */}
-
-        {selectedServices.length > 0 && (
-          <div className="card p-6">
-            <div className="flex items-center justify-between gap-3 mb-5">
-              <div className="flex items-center gap-2">
-                <Network className="w-5 h-5 text-primary" />
-
-                <div>
-                  <h2 className="text-lg font-semibold text-main">
-                    Arquitectura de la propuesta
-                  </h2>
-
-                  <p className="text-xs text-muted">
-                    Representación visual basada en los
-                    servicios seleccionados.
-                  </p>
-                </div>
-              </div>
-
-              <span className="text-xs font-semibold text-primary bg-blue-50 px-3 py-1.5 rounded-full">
-                {selectedServices.length} servicios
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 p-5 rounded-xl bg-slate-50 border border-border">
-              <div className="px-4 py-3 rounded-xl bg-slate-900 text-white text-xs font-semibold">
-                INTERNET
-              </div>
-
-              {selectedServices.includes(
-                'route53',
-              ) && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-muted" />
-
-                  <div className="px-4 py-3 rounded-xl bg-white border border-border text-xs font-semibold">
-                    Route 53
+                          <button
+                            type="button"
+                            onClick={() => deleteProposal(proposal.id)}
+                            className="p-2 rounded-lg border border-border hover:bg-red-50 text-alerts"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                'cloudfront',
-              ) && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-muted" />
-
-                  <div className="px-4 py-3 rounded-xl bg-white border border-border text-xs font-semibold">
-                    CloudFront
-                  </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                'vpc',
-              ) && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-muted" />
-
-                  <div className="px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-700">
-                    VPC
-                  </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                'ec2',
-              ) && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-muted" />
-
-                  <div className="px-4 py-3 rounded-xl bg-white border border-border text-xs font-semibold">
-                    EC2
-                  </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                'rds',
-              ) && (
-                <>
-                  <ChevronRight className="w-4 h-4 text-muted" />
-
-                  <div className="px-4 py-3 rounded-xl bg-white border border-border text-xs font-semibold">
-                    RDS
-                  </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                's3',
-              ) && (
-                <>
-                  <span className="text-muted font-bold">
-                    +
-                  </span>
-
-                  <div className="px-4 py-3 rounded-xl bg-white border border-border text-xs font-semibold">
-                    S3
-                  </div>
-                </>
-              )}
-
-              {selectedServices.includes(
-                'iam',
-              ) && (
-                <>
-                  <span className="text-muted font-bold">
-                    +
-                  </span>
-
-                  <div className="px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-xs font-semibold text-green-700">
-                    IAM
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* OBJETIVOS */}
-
-            {migrationObjectives.length > 0 && (
-              <div className="mt-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Target className="w-4 h-4 text-primary" />
-
-                  <span className="text-xs font-semibold text-main">
-                    Objetivos de la propuesta
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {migrationObjectives.map(
-                    (objective) => (
-                      <span
-                        key={objective}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-medium"
-                      >
-                        <Check className="w-3 h-3" />
-                        {objective}
-                      </span>
-                    ),
-                  )}
                 </div>
               </div>
             )}
           </div>
         )}
       </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            localStorage.removeItem('cloudops-planning-draft')
+            resetForm()
+            setNotification('Formulario reiniciado')
+          }}
+          className="text-sm text-muted hover:text-main flex items-center gap-2"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Reiniciar planificación
+        </button>
+      </div>
     </div>
   )
 }
+
+const ArrowDownIcon = () => (
+  <ArrowRight className="w-4 h-4 text-muted rotate-90" />
+)
 
 export default Planning

@@ -8,10 +8,10 @@ type Props = {
 
 const StatCard = ({ title, value, subtitle }: Props): JSX.Element => {
   return (
-    <div className="card p-4">
+    <div className="card p-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg">
       <div className="text-sm text-muted">{title}</div>
-      <div className="text-2xl font-bold mt-2">{value}</div>
-      {subtitle && <div className="text-sm text-muted mt-1">{subtitle}</div>}
+      <div className="text-xl font-bold mt-2">{value}</div>
+      {subtitle && <div className="text-xs text-muted mt-1">{subtitle}</div>}
     </div>
   )
 }

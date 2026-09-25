@@ -79,12 +79,9 @@ const getStatusInfo = (status: SecurityStatus) => {
     return {
       label: 'Correcto',
       icon: CheckCircle,
-      container:
-        'bg-green-50 border-green-200',
-      badge:
-        'bg-green-100 text-green-700',
-      text:
-        'text-green-700',
+      container: 'bg-green-50 border-green-200',
+      badge: 'bg-green-100 text-green-700',
+      text: 'text-green-700',
     }
   }
 
@@ -92,24 +89,18 @@ const getStatusInfo = (status: SecurityStatus) => {
     return {
       label: 'Requiere revisión',
       icon: AlertTriangle,
-      container:
-        'bg-yellow-50 border-yellow-200',
-      badge:
-        'bg-yellow-100 text-yellow-700',
-      text:
-        'text-yellow-700',
+      container: 'bg-yellow-50 border-yellow-200',
+      badge: 'bg-yellow-100 text-yellow-700',
+      text: 'text-yellow-700',
     }
   }
 
   return {
     label: 'Problema',
     icon: XCircle,
-    container:
-      'bg-red-50 border-red-200',
-    badge:
-      'bg-red-100 text-red-700',
-    text:
-      'text-red-700',
+    container: 'bg-red-50 border-red-200',
+    badge: 'bg-red-100 text-red-700',
+    text: 'text-red-700',
   }
 }
 
@@ -128,10 +119,14 @@ const Security = (): JSX.Element => {
     (item) => item.status === 'error',
   ).length
 
-  const score = Math.round((correct / total) * 100)
+  const score =
+    total > 0 ? Math.round((correct / total) * 100) : 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+
+      {/* ENCABEZADO */}
+
       <div>
         <h1 className="text-main-title">
           Seguridad
@@ -143,11 +138,9 @@ const Security = (): JSX.Element => {
         </p>
       </div>
 
-      {/* =====================================================
-          RESUMEN DE SEGURIDAD
-      ===================================================== */}
+      {/* RESUMEN DE SEGURIDAD */}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
         <div className="card p-4">
           <div className="text-sm text-muted">
@@ -207,19 +200,16 @@ const Security = (): JSX.Element => {
 
       </div>
 
-      {/* =====================================================
-          LEYENDA
-      ===================================================== */}
+      {/* LEYENDA */}
 
-      <section className="card p-4 md:p-6">
+      <section className="card p-3 md:p-5">
 
-        <h2 className="text-lg font-semibold">
+        <h2 className="text-lg font-semibold text-main">
           Indicadores de seguridad
         </h2>
 
         <p className="text-sm text-muted mt-1">
-          Interpretación de los estados utilizados en el
-          panel.
+          Interpretación de los estados utilizados en el panel.
         </p>
 
         <div className="flex flex-wrap gap-3 mt-4">
@@ -252,11 +242,9 @@ const Security = (): JSX.Element => {
 
       </section>
 
-      {/* =====================================================
-          MODELO DE RESPONSABILIDAD COMPARTIDA
-      ===================================================== */}
+      {/* MODELO DE RESPONSABILIDAD COMPARTIDA */}
 
-      <section className="card p-4 md:p-6">
+      <section className="card p-3 md:p-5">
 
         <div className="flex items-start gap-3">
 
@@ -265,7 +253,7 @@ const Security = (): JSX.Element => {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-semibold text-main">
               Modelo de responsabilidad compartida
             </h2>
 
@@ -277,11 +265,11 @@ const Security = (): JSX.Element => {
 
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
 
           <div className="border border-border rounded-lg p-4">
 
-            <div className="font-semibold">
+            <div className="font-semibold text-main">
               AWS
             </div>
 
@@ -299,7 +287,7 @@ const Security = (): JSX.Element => {
 
           <div className="border border-border rounded-lg p-4">
 
-            <div className="font-semibold">
+            <div className="font-semibold text-main">
               Cliente
             </div>
 
@@ -319,15 +307,13 @@ const Security = (): JSX.Element => {
 
       </section>
 
-      {/* =====================================================
-          CONTROLES DE SEGURIDAD
-      ===================================================== */}
+      {/* CONTROLES DE SEGURIDAD */}
 
       <section>
 
         <div className="mb-4">
 
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-lg font-semibold text-main">
             Controles de seguridad
           </h2>
 
@@ -338,7 +324,7 @@ const Security = (): JSX.Element => {
 
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 
           {securityItems.map((item) => {
 
@@ -349,12 +335,10 @@ const Security = (): JSX.Element => {
             return (
               <div
                 key={item.id}
-                className={`card p-5 border ${
-                  statusInfo.container
-                }`}
+                className={`card p-4 border ${statusInfo.container}`}
               >
 
-                {/* Encabezado */}
+                {/* ENCABEZADO */}
 
                 <div className="flex items-start justify-between gap-3">
 
@@ -378,7 +362,7 @@ const Security = (): JSX.Element => {
 
                 </div>
 
-                {/* Estado */}
+                {/* ESTADO */}
 
                 <div className="mt-4">
 
@@ -390,13 +374,13 @@ const Security = (): JSX.Element => {
 
                 </div>
 
-                {/* Descripción */}
+                {/* DESCRIPCIÓN */}
 
                 <p className="text-sm text-muted mt-4 leading-6">
                   {item.description}
                 </p>
 
-                {/* Recomendación */}
+                {/* RECOMENDACIÓN */}
 
                 <div className="mt-4 pt-4 border-t border-border">
 
@@ -418,11 +402,9 @@ const Security = (): JSX.Element => {
 
       </section>
 
-      {/* =====================================================
-          RESUMEN FINAL
-      ===================================================== */}
+      {/* RESUMEN FINAL */}
 
-      <section className="card p-4 md:p-6">
+      <section className="card p-3 md:p-5">
 
         <div className="flex items-center gap-3">
 
@@ -430,7 +412,7 @@ const Security = (): JSX.Element => {
 
           <div>
 
-            <h2 className="font-semibold">
+            <h2 className="font-semibold text-main">
               Resumen de seguridad
             </h2>
 
@@ -443,6 +425,44 @@ const Security = (): JSX.Element => {
 
           </div>
 
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-green-200 bg-green-50 p-3">
+            <div className="text-xs text-green-700 font-semibold uppercase tracking-wide">
+              Estado saludable
+            </div>
+            <div className="mt-2 text-lg font-bold text-green-700">
+              {correct}/{total}
+            </div>
+            <div className="text-xs text-green-700/80">
+              Controles funcionando correctamente.
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3">
+            <div className="text-xs text-yellow-700 font-semibold uppercase tracking-wide">
+              Atención
+            </div>
+            <div className="mt-2 text-lg font-bold text-yellow-700">
+              {warnings}
+            </div>
+            <div className="text-xs text-yellow-700/80">
+              Revisiones recomendadas antes de producción.
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3">
+            <div className="text-xs text-red-700 font-semibold uppercase tracking-wide">
+              Riesgo
+            </div>
+            <div className="mt-2 text-lg font-bold text-red-700">
+              {errors}
+            </div>
+            <div className="text-xs text-red-700/80">
+              Requiere corrección inmediata.
+            </div>
+          </div>
         </div>
 
       </section>

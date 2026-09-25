@@ -1,7 +1,12 @@
 export interface AwsService {
   id: string;
   name: string;
-  category: 'Compute' | 'Storage' | 'Database' | 'Networking' | 'Security';
+  category:
+    | 'Compute'
+    | 'Storage'
+    | 'Database'
+    | 'Networking'
+    | 'Security';
   description: string;
   mainFunction: string;
   status: 'active' | 'inactive';
@@ -16,7 +21,7 @@ export interface CloudProposal {
   estimatedUsers: number;
   availabilityLevel: 'Básica' | 'Alta' | 'Crítica';
   selectedServices: string[];
-  migrationGoal: string;
+  migrationGoal: string[];
 }
 
 export interface CostEstimate {
@@ -33,8 +38,7 @@ export interface Region {
   id: string;
   code: string;
   location: string;
-  deployedServices: string[];
-  status: 'active' | 'degraded' | 'inactive';
+  plannedServices: string[];
 }
 
 export type SecurityStatus = 'ok' | 'warning' | 'error';
@@ -42,7 +46,12 @@ export type SecurityStatus = 'ok' | 'warning' | 'error';
 export interface SecurityItem {
   id: string;
   name: string;
-  category: 'Responsabilidad compartida' | 'IAM' | 'Protección de cuentas' | 'Protección de datos' | 'Cumplimiento';
+  category:
+    | 'Responsabilidad compartida'
+    | 'IAM'
+    | 'Protección de cuentas'
+    | 'Protección de datos'
+    | 'Cumplimiento';
   status: SecurityStatus;
   description: string;
 }

@@ -18,7 +18,7 @@ const App = (): JSX.Element => {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
-        <main className="p-4 md:p-6">
+        <main className="p-3 md:p-4">
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/planning" element={<Planning />} />

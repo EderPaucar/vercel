@@ -4,7 +4,7 @@ import StatusBadge from './StatusBadge'
 
 const ServiceCard = ({ service }: { service: AwsService }): JSX.Element => {
   return (
-    <div className="card p-4">
+    <div className="card p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg">
       <div className="flex justify-between items-start">
         <div>
           <div className="font-semibold">{service.name}</div>

@@ -1,7 +1,13 @@
 import React, { useMemo, useState } from 'react'
-import { Search, RotateCcw, CheckCircle2, Server } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import {
+  Search,
+  RotateCcw,
+  CheckCircle2,
+  Server,
+} from 'lucide-react'
 
-export interface AWSService {
+interface AWSService {
   id: string
   name: string
   category: string
@@ -10,7 +16,6 @@ export interface AWSService {
   status: 'Activo' | 'En uso' | 'Optimizado' | 'En evaluación'
 }
 
-// Lista de los 7 servicios mínimos requeridos por la práctica
 const defaultAwsServices: AWSService[] = [
   {
     id: 'ec2',
@@ -85,15 +90,22 @@ const defaultAwsServices: AWSService[] = [
 ]
 
 const Services = (): JSX.Element => {
-  const [filterCategory, setFilterCategory] = useState<string>('Todas')
-  const [filterStatus, setFilterStatus] = useState<string>('Todos')
-  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [filterCategory, setFilterCategory] = useState('Todas')
+  const [filterStatus, setFilterStatus] = useState('Todos')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get('search') ?? '',
+  )
 
   const categories = useMemo(
     () => [
       'Todas',
       ...Array.from(
-        new Set(defaultAwsServices.map((service) => service.category)),
+        new Set(
+          defaultAwsServices.map(
+            (service) => service.category,
+          ),
+        ),
       ),
     ],
     [],
@@ -103,13 +115,19 @@ const Services = (): JSX.Element => {
     () => [
       'Todos',
       ...Array.from(
-        new Set(defaultAwsServices.map((service) => service.status)),
+        new Set(
+          defaultAwsServices.map(
+            (service) => service.status,
+          ),
+        ),
       ),
     ],
     [],
   )
 
   const filteredServices = useMemo(() => {
+    const search = searchTerm.toLowerCase().trim()
+
     return defaultAwsServices.filter((service) => {
       const matchesCategory =
         filterCategory === 'Todas' ||
@@ -119,8 +137,6 @@ const Services = (): JSX.Element => {
         filterStatus === 'Todos' ||
         service.status === filterStatus
 
-      const search = searchTerm.toLowerCase().trim()
-
       const matchesSearch =
         search === '' ||
         service.name.toLowerCase().includes(search) ||
@@ -128,52 +144,72 @@ const Services = (): JSX.Element => {
         service.description.toLowerCase().includes(search) ||
         service.mainFunction.toLowerCase().includes(search)
 
-      return matchesCategory && matchesStatus && matchesSearch
+      return (
+        matchesCategory &&
+        matchesStatus &&
+        matchesSearch
+      )
     })
   }, [filterCategory, filterStatus, searchTerm])
 
   const activeServices = defaultAwsServices.filter(
     (service) =>
-      service.status === 'Activo' || service.status === 'En uso',
+      service.status === 'Activo' ||
+      service.status === 'En uso',
   ).length
 
   const resetFilters = (): void => {
     setFilterCategory('Todas')
     setFilterStatus('Todos')
     setSearchTerm('')
+    setSearchParams({})
   }
 
-  const getStatusClass = (status: AWSService['status']): string => {
+  const getStatusClass = (
+    status: AWSService['status'],
+  ): string => {
     switch (status) {
       case 'Activo':
         return 'bg-emerald-100 text-emerald-800'
+
       case 'En uso':
         return 'bg-blue-100 text-blue-800'
+
       case 'Optimizado':
         return 'bg-amber-100 text-amber-800'
+
       case 'En evaluación':
         return 'bg-slate-100 text-slate-700'
+
       default:
         return 'bg-slate-100 text-slate-700'
     }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Encabezado */}
+    <div className="space-y-4">
+
+      {/* ENCABEZADO */}
+
       <div>
-        <h1 className="text-main-title">Módulo 7 – Servicios AWS</h1>
+        <h1 className="text-main-title">
+          Módulo 7 – Servicios AWS
+        </h1>
 
         <p className="text-muted mt-1">
-          Catálogo detallado de los servicios AWS utilizados en la
-          infraestructura CloudOps.
+          Catálogo detallado de los servicios AWS utilizados
+          en la infraestructura CloudOps.
         </p>
       </div>
 
-      {/* Tarjetas de resumen */}
+      {/* TARJETAS DE RESUMEN */}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
         <div className="card p-4">
+
           <div className="flex items-center justify-between">
+
             <div>
               <div className="text-sm text-muted">
                 Total de Servicios
@@ -187,17 +223,21 @@ const Services = (): JSX.Element => {
             <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
               <Server className="w-5 h-5 text-blue-600" />
             </div>
+
           </div>
+
         </div>
 
         <div className="card p-4">
+
           <div className="flex items-center justify-between">
+
             <div>
               <div className="text-sm text-muted">
                 Servicios Activos
               </div>
 
-              <div className="text-2xl font-bold mt-1 text-emerald-600">
+              <div className="text-2xl font-bold mt-1 text-security">
                 {activeServices}
               </div>
             </div>
@@ -205,17 +245,21 @@ const Services = (): JSX.Element => {
             <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             </div>
+
           </div>
+
         </div>
 
         <div className="card p-4">
+
           <div className="flex items-center justify-between">
+
             <div>
               <div className="text-sm text-muted">
                 Categorías Registradas
               </div>
 
-              <div className="text-2xl font-bold mt-1 text-blue-600">
+              <div className="text-2xl font-bold mt-1 text-primary">
                 {categories.length - 1}
               </div>
             </div>
@@ -223,23 +267,33 @@ const Services = (): JSX.Element => {
             <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
               <Server className="w-5 h-5 text-blue-600" />
             </div>
+
           </div>
+
         </div>
+
       </div>
 
-      {/* Buscador */}
+      {/* BUSCADOR */}
+
       <div className="card p-4">
+
         <div className="flex flex-col lg:flex-row gap-3">
+
           <div className="relative flex-1">
+
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
 
             <input
               type="text"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event) =>
+                setSearchTerm(event.target.value)
+              }
               placeholder="Buscar servicio, categoría o función..."
               className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-white text-main outline-none focus:ring-2 focus:ring-blue-500"
             />
+
           </div>
 
           <button
@@ -250,61 +304,81 @@ const Services = (): JSX.Element => {
             <RotateCcw className="w-4 h-4" />
             Limpiar filtros
           </button>
+
         </div>
+
       </div>
 
-      {/* Filtros */}
+      {/* FILTROS */}
+
       <div className="card p-4 space-y-4">
+
         <div>
+
           <span className="text-sm text-muted font-medium block mb-2">
             Filtrar por categoría
           </span>
 
           <div className="flex flex-wrap gap-2">
+
             {categories.map((category) => (
               <button
                 key={category}
                 type="button"
-                onClick={() => setFilterCategory(category)}
+                onClick={() =>
+                  setFilterCategory(category)
+                }
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                   filterCategory === category
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-primary text-white'
                     : 'bg-slate-100 text-muted hover:bg-slate-200'
                 }`}
               >
                 {category}
               </button>
             ))}
+
           </div>
+
         </div>
 
         <div>
+
           <span className="text-sm text-muted font-medium block mb-2">
             Filtrar por estado
           </span>
 
           <div className="flex flex-wrap gap-2">
+
             {statuses.map((status) => (
               <button
                 key={status}
                 type="button"
-                onClick={() => setFilterStatus(status)}
+                onClick={() =>
+                  setFilterStatus(status)
+                }
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                   filterStatus === status
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-security text-white'
                     : 'bg-slate-100 text-muted hover:bg-slate-200'
                 }`}
               >
                 {status}
               </button>
             ))}
+
           </div>
+
         </div>
+
       </div>
 
-      {/* Resultado */}
+      {/* RESULTADOS */}
+
       <div className="flex items-center justify-between">
+
         <div>
+
           <h2 className="text-lg font-semibold text-main">
             Catálogo de Servicios
           </h2>
@@ -313,13 +387,19 @@ const Services = (): JSX.Element => {
             Mostrando {filteredServices.length} de{' '}
             {defaultAwsServices.length} servicios
           </p>
+
         </div>
+
       </div>
 
-      {/* Lista */}
+      {/* LISTA */}
+
       <section>
+
         {filteredServices.length === 0 ? (
+
           <div className="card p-8 text-center">
+
             <Search className="w-8 h-8 mx-auto text-muted mb-3" />
 
             <h3 className="font-semibold text-main">
@@ -327,27 +407,39 @@ const Services = (): JSX.Element => {
             </h3>
 
             <p className="text-sm text-muted mt-1">
-              Prueba con otro término de búsqueda o limpia los filtros.
+              Prueba con otro término de búsqueda o limpia
+              los filtros.
             </p>
+
           </div>
+
         ) : (
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
             {filteredServices.map((service) => (
+
               <div
                 key={service.id}
                 className="card p-5 flex flex-col justify-between space-y-4 border border-border hover:shadow-md transition-shadow"
               >
-                {/* Encabezado */}
+
+                {/* ENCABEZADO */}
+
                 <div>
+
                   <div className="flex justify-between items-start gap-3">
+
                     <div>
+
                       <h3 className="text-base font-bold text-main">
                         {service.name}
                       </h3>
 
-                      <span className="inline-block text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded mt-1">
+                      <span className="inline-block text-xs font-medium text-primary bg-blue-50 px-2 py-0.5 rounded mt-1">
                         {service.category}
                       </span>
+
                     </div>
 
                     <span
@@ -357,16 +449,21 @@ const Services = (): JSX.Element => {
                     >
                       {service.status}
                     </span>
+
                   </div>
 
-                  {/* Descripción */}
+                  {/* DESCRIPCIÓN */}
+
                   <p className="text-xs text-muted mt-3 leading-relaxed">
                     {service.description}
                   </p>
+
                 </div>
 
-                {/* Función principal */}
+                {/* FUNCIÓN PRINCIPAL */}
+
                 <div className="pt-3 border-t border-border">
+
                   <span className="text-xs font-bold uppercase tracking-wider text-muted">
                     Función principal:
                   </span>
@@ -374,12 +471,19 @@ const Services = (): JSX.Element => {
                   <p className="text-xs font-medium text-main mt-1 leading-relaxed">
                     {service.mainFunction}
                   </p>
+
                 </div>
+
               </div>
+
             ))}
+
           </div>
+
         )}
+
       </section>
+
     </div>
   )
 }

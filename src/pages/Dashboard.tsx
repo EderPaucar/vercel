@@ -2,25 +2,27 @@ import React, { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Activity,
+  AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  Clock3,
   DollarSign,
-  Eye,
-  LayoutDashboard,
-  Network,
-  Plus,
-  RefreshCw,
-  Search,
+  MapPin,
   Server,
   ShieldCheck,
 } from 'lucide-react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 
 import StatCard from '../components/StatCard'
-import SecurityCard from '../components/SecurityCard'
-import RegionCard from '../components/RegionCard'
 import ServiceCard from '../components/ServiceCard'
-import SecurityList from '../components/SecurityList'
+import SecurityCard from '../components/SecurityCard'
 
 import {
   awsServices,
@@ -29,827 +31,677 @@ import {
   costEstimates,
 } from '../data/awsServices'
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts'
+interface ActiveProposal {
+  solutionName: string
+  region: string
+  users: number
+  availability: string
+  services: string[]
+  monthlyCost: number
+  annualCost: number
+  readiness: number
+}
+
+const readActiveProposal = (): ActiveProposal | null => {
+  try {
+    const saved = localStorage.getItem('cloudops-active-proposal')
+    return saved ? (JSON.parse(saved) as ActiveProposal) : null
+  } catch {
+    return null
+  }
+}
 
 const Dashboard = (): JSX.Element => {
   const navigate = useNavigate()
 
-  // =====================================================
-  // ESTADOS
-  // =====================================================
-
-  const [searchService, setSearchService] = useState('')
-  const [showAllServices, setShowAllServices] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState('Ahora')
-  const [chartView, setChartView] = useState(true)
-
-  // =====================================================
-  // REGIÓN SELECCIONADA
-  // =====================================================
+  const [activeProposal] = useState<ActiveProposal | null>(
+    readActiveProposal,
+  )
 
   const [selectedRegionId, setSelectedRegionId] = useState<string>(
-    regions[0]?.code ?? '',
+    activeProposal?.region ?? regions[0]?.id ?? '',
   )
 
-  const selectedRegion =
-    regions.find((region) => region.code === selectedRegionId) ?? regions[0]
+  const [chartView, setChartView] = useState<'monthly' | 'annual'>(
+    'monthly',
+  )
 
-  // =====================================================
-  // ACTUALIZAR INFORMACIÓN
-  // =====================================================
+  const selectedRegion = useMemo(
+    () =>
+      regions.find(
+        (region) => region.id === selectedRegionId,
+      ),
+    [selectedRegionId],
+  )
 
-  const handleRefresh = () => {
-    const now = new Date()
+  const regionServices = useMemo(() => {
+    if (!selectedRegion) return []
 
-    setLastUpdate(
-      now.toLocaleTimeString('es-PE', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
+    const plannedServices =
+      activeProposal?.region === selectedRegion.id
+        ? activeProposal.services
+        : selectedRegion.plannedServices
+
+    return awsServices.filter((service) =>
+      plannedServices.some(
+        (plannedService) =>
+          plannedService.toLowerCase() ===
+          service.name.toLowerCase(),
+      ),
     )
-  }
+  }, [activeProposal, selectedRegion])
 
-  // =====================================================
-  // CÁLCULO DE COSTOS
-  // =====================================================
+  const regionCosts = useMemo(() => {
+    if (!selectedRegion) return []
 
-  const totalMonthly = costEstimates.reduce(
-    (sum, cost) => sum + cost.monthlyCost,
-    0,
+    const plannedServices =
+      activeProposal?.region === selectedRegion.id
+        ? activeProposal.services
+        : selectedRegion.plannedServices
+
+    return costEstimates.filter((cost) =>
+      plannedServices.some(
+        (service) =>
+          service.toLowerCase() ===
+          cost.serviceName.toLowerCase(),
+      ),
+    )
+  }, [activeProposal, selectedRegion])
+
+  const monthlyCost = useMemo(
+    () =>
+      regionCosts.reduce(
+        (total, cost) => total + cost.monthlyCost,
+        0,
+      ),
+    [regionCosts],
   )
 
-  const totalAnnual = costEstimates.reduce(
-    (sum, cost) => sum + cost.annualCost,
-    0,
+  const annualCost = useMemo(
+    () =>
+      regionCosts.reduce(
+        (total, cost) => total + cost.annualCost,
+        0,
+      ),
+    [regionCosts],
   )
 
-  // =====================================================
-  // GRÁFICO
-  // =====================================================
+  const cloudResources =
+    selectedRegion?.plannedServices.length ?? 0
 
-  const barData = costEstimates.map((cost) => ({
-    name: cost.serviceName,
-    value: Number(cost.monthlyCost.toFixed(2)),
-  }))
+  const infrastructureStatus = selectedRegion
+    ? 'Planificada'
+    : 'Sin información'
 
-  // =====================================================
-  // SEGURIDAD
-  // =====================================================
-
-  const totalSecurity = securityItems.length || 1
-
-  const okCount = securityItems.filter(
+  const securityOk = securityItems.filter(
     (item) => item.status === 'ok',
   ).length
 
-  const warningCount = securityItems.filter(
+  const securityWarnings = securityItems.filter(
     (item) => item.status === 'warning',
   ).length
 
-  const errorCount = securityItems.filter(
-    (item) => item.status === 'error',
-  ).length
+  const securityStatus =
+    securityWarnings === 0
+      ? 'Protección considerada'
+      : 'Revisión pendiente'
 
   const securityScore = Math.round(
-    (okCount / totalSecurity) * 100,
+    (securityOk / securityItems.length) * 100,
   )
 
-  const securityStatus =
-    errorCount > 0
-      ? 'error'
-      : warningCount > 0
-        ? 'warning'
-        : 'ok'
-
-  // =====================================================
-  // RECURSOS CLOUD
-  // =====================================================
-
-  const cloudResources = regions.reduce(
-    (total, region) =>
-      total + (region.deployedServices?.length || 0),
-    0,
+  const chartData = useMemo(
+    () =>
+      regionCosts.map((cost) => ({
+        service: cost.serviceName,
+        monthly: cost.monthlyCost,
+        annual: cost.annualCost,
+      })),
+    [regionCosts],
   )
 
-  // =====================================================
-  // ARQUITECTURA
-  // =====================================================
+  const chartKey =
+    chartView === 'monthly' ? 'monthly' : 'annual'
 
-  const requiredArchitectureServices = [
-    'route53',
-    'cloudfront',
-    'vpc',
-    'ec2',
-    'rds',
-  ]
+  const chartTitle =
+    chartView === 'monthly'
+      ? 'Costo mensual por servicio'
+      : 'Costo anual por servicio'
 
-  const architectureReady =
-    requiredArchitectureServices.every((serviceId) =>
-      awsServices.some((service) => service.id === serviceId),
-    )
-
-  const architectureStatus = architectureReady
-    ? 'Operativa'
-    : 'Pendiente'
-
-  // =====================================================
-  // FILTRO DE SERVICIOS
-  // =====================================================
-
-  const filteredServices = useMemo(() => {
-    const search = searchService.toLowerCase().trim()
-
-    if (!search) {
-      return showAllServices
-        ? awsServices
-        : awsServices.slice(0, 3)
-    }
-
-    return awsServices.filter(
-      (service) =>
-        service.name.toLowerCase().includes(search) ||
-        service.category.toLowerCase().includes(search),
-    )
-  }, [searchService, showAllServices])
-
-  // =====================================================
-  // RECOMENDACIONES DE SEGURIDAD
-  // =====================================================
-
-  const securityAttention = securityItems.filter(
-    (item) =>
-      item.status === 'warning' ||
-      item.status === 'error',
-  ).length
+  const formatCurrency = (value: number): string =>
+    `$${value.toFixed(2)}`
 
   return (
-    <div className="space-y-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-4">
+      {/* ENCABEZADO */}
 
-        {/* =====================================================
-            ENCABEZADO
-        ===================================================== */}
+      <div>
+        <h1 className="text-main-title">
+          Dashboard CloudOps
+        </h1>
 
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <LayoutDashboard className="w-7 h-7 text-primary" />
+        <p className="text-muted mt-1">
+          Resumen general de la solución Cloud y sus
+          servicios considerados.
+        </p>
+      </div>
 
-              <h1 className="text-main-title">
-                CloudOps Dashboard
-              </h1>
+      {activeProposal && (
+        <div className="card border-l-4 border-primary bg-blue-50/40 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                Solución activa
+              </p>
+
+              <h2 className="mt-1 text-lg font-bold text-main">
+                {activeProposal.solutionName}
+              </h2>
+
+              <p className="mt-1 text-sm text-muted">
+                {activeProposal.services.length} servicios ·{' '}
+                {activeProposal.users.toLocaleString('es-PE')} usuarios ·{' '}
+                Disponibilidad {activeProposal.availability}
+              </p>
             </div>
-
-            <p className="text-muted mt-1">
-              Panel general para la planificación,
-              visualización y monitoreo de la solución Cloud.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg bg-white text-sm font-medium hover:bg-slate-50 transition"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Actualizar
-            </button>
 
             <button
               type="button"
               onClick={() => navigate('/planning')}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:opacity-90 transition"
+              className="flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:bg-primary/90"
             >
-              <Plus className="w-4 h-4" />
-              Nueva planificación
+              Editar propuesta
+              <ArrowRight className="h-4 w-4" />
             </button>
-
           </div>
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="rounded-lg border border-blue-100 bg-white/80 px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase text-muted">
+                  Preparación
+                </p>
+                <p className="mt-1 text-lg font-bold text-primary">
+                  {activeProposal.readiness}%
+                </p>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-blue-100">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${activeProposal.readiness}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-blue-100 bg-white/80 px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase text-muted">
+                  Costo mensual
+                </p>
+                <p className="mt-1 text-lg font-bold text-main">
+                  {formatCurrency(activeProposal.monthlyCost)}
+                </p>
+                <p className="text-xs text-muted">estimado</p>
+              </div>
+
+              <div className="rounded-lg border border-blue-100 bg-white/80 px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase text-muted">
+                  Costo anual
+                </p>
+                <p className="mt-1 text-lg font-bold text-main">
+                  {formatCurrency(activeProposal.annualCost)}
+                </p>
+                <p className="text-xs text-muted">proyección</p>
+              </div>
+            </div>
         </div>
+      )}
 
-        {/* =====================================================
-            ESTADO DE ACTUALIZACIÓN
-        ===================================================== */}
+      {/* SELECTOR DE REGIÓN */}
 
-        <div className="flex items-center gap-2 text-xs text-muted">
-          <Clock3 className="w-4 h-4" />
-          Última actualización: {lastUpdate}
-        </div>
+      <div className="card p-4">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-primary" />
 
-        {/* =====================================================
-            INDICADORES PRINCIPALES
-        ===================================================== */}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-          <StatCard
-            title="Servicios utilizados"
-            value={awsServices.length}
-            subtitle="Servicios AWS registrados"
-          />
-
-          {/* REGIÓN SELECCIONADA */}
-          <div className="card p-4">
-            <div className="text-sm text-muted">
-              Región seleccionada
+              <h2 className="text-lg font-semibold text-main">
+                Región seleccionada
+              </h2>
             </div>
 
+            <p className="text-sm text-muted mt-1">
+              Selecciona una región para actualizar la
+              información del dashboard.
+            </p>
+          </div>
+
+          <div className="w-full md:w-80">
+            <label
+              htmlFor="region-dashboard"
+              className="block text-sm font-medium text-main mb-2"
+            >
+              Región
+            </label>
+
             <select
+              id="region-dashboard"
               value={selectedRegionId}
               onChange={(event) =>
                 setSelectedRegionId(event.target.value)
               }
-              className="w-full mt-2 text-xl font-bold text-main bg-transparent border-0 outline-none cursor-pointer"
+              className="w-full border border-border rounded-lg px-4 py-2.5 bg-white text-main outline-none focus:border-primary"
             >
               {regions.map((region) => (
                 <option
-                  key={region.code}
-                  value={region.code}
+                  key={region.id}
+                  value={region.id}
                 >
-                  {region.code}
+                  {region.code} — {region.location}
                 </option>
               ))}
             </select>
-
-            <div className="text-sm text-muted mt-1">
-              {selectedRegion?.location ??
-                'Sin región seleccionada'}
-            </div>
           </div>
-
-          <StatCard
-            title="Costo mensual estimado"
-            value={`$${totalMonthly.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`}
-            subtitle="Estimación mensual"
-          />
-
-          <StatCard
-            title="Costo anual estimado"
-            value={`$${totalAnnual.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`}
-            subtitle="Proyección a 12 meses"
-          />
-
         </div>
 
-        {/* =====================================================
-            ESTADO GENERAL
-        ===================================================== */}
+        {selectedRegion && (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-main">
+              {selectedRegion.code}
+            </span>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <span className="text-sm text-muted">
+              {selectedRegion.location}
+            </span>
 
-          {/* SEGURIDAD */}
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+              Considerada
+            </span>
+          </div>
+        )}
+      </div>
 
-          <div className="card p-5">
+      {/* TARJETAS PRINCIPALES */}
 
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-muted font-medium uppercase tracking-wider">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <StatCard
+          title="Servicios utilizados"
+          value={String(regionServices.length)}
+          subtitle={
+            selectedRegion
+              ? `${selectedRegion.code} activos`
+              : 'Sin región'
+          }
+        />
+
+        <StatCard
+          title="Región seleccionada"
+          value={selectedRegion?.code ?? 'N/D'}
+          subtitle={
+            selectedRegion?.location ??
+            'Sin región seleccionada'
+          }
+        />
+
+        <StatCard
+          title="Costo mensual estimado"
+          value={formatCurrency(monthlyCost)}
+          subtitle="Estimación mensual"
+        />
+
+        <StatCard
+          title="Costo anual estimado"
+          value={formatCurrency(annualCost)}
+          subtitle="Estimación anual"
+        />
+      </div>
+
+      {/* ESTADO GENERAL */}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="card p-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm text-muted">
                 Estado de seguridad
-              </div>
+              </p>
 
+              <h3 className="text-xl font-bold text-main mt-1">
+                {securityStatus}
+              </h3>
+            </div>
+
+            <div className="w-10 h-10 rounded-lg bg-security/10 flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-security" />
             </div>
-
-            <div className="text-3xl font-bold mt-2 text-main">
-              {securityScore}%
-            </div>
-
-            <div className="flex items-center gap-2 mt-2 text-xs">
-
-              <span className="text-security">
-                {okCount} correctos
-              </span>
-
-              {warningCount > 0 && (
-                <span className="text-costs">
-                  {warningCount} por revisar
-                </span>
-              )}
-
-              {errorCount > 0 && (
-                <span className="text-alerts">
-                  {errorCount} alertas
-                </span>
-              )}
-
-            </div>
-
           </div>
 
-          {/* RECURSOS CLOUD */}
+          <p className="text-xs text-muted mt-3">
+            {securityOk} controles correctos y{' '}
+            {securityWarnings} pendientes de revisión.
+          </p>
+        </div>
 
-          <div className="card p-5">
-
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-muted font-medium uppercase tracking-wider">
+        <div className="card p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm text-muted">
                 Recursos Cloud
-              </div>
+              </p>
 
+              <h3 className="text-xl font-bold text-main mt-1">
+                {cloudResources}
+              </h3>
+            </div>
+
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Server className="w-5 h-5 text-primary" />
             </div>
-
-            <div className="text-3xl font-bold mt-2 text-main">
-              {cloudResources}
-            </div>
-
-            <div className="text-xs text-muted mt-1">
-              Recursos registrados en las regiones
-            </div>
-
           </div>
 
-          {/* ARQUITECTURA */}
-
-          <div className="card p-5">
-
-            <div className="flex items-center justify-between">
-
-              <div className="text-xs text-muted font-medium uppercase tracking-wider">
-                Estado de arquitectura
-              </div>
-
-              <Activity
-                className={`w-5 h-5 ${
-                  architectureReady
-                    ? 'text-security'
-                    : 'text-costs'
-                }`}
-              />
-
-            </div>
-
-            <div
-              className={`text-2xl font-bold mt-2 ${
-                architectureReady
-                  ? 'text-security'
-                  : 'text-costs'
-              }`}
-            >
-              {architectureStatus}
-            </div>
-
-            <div className="text-xs text-muted mt-1">
-              Internet → Route 53 → CloudFront → VPC
-            </div>
-
-          </div>
-
+          <p className="text-xs text-muted mt-3">
+            Recursos previstos para la solución actual.
+          </p>
         </div>
 
-        {/* =====================================================
-            ACCIONES RÁPIDAS
-        ===================================================== */}
-
-        <section className="space-y-3">
-
-          <h2 className="text-base font-semibold text-main">
-            Acciones rápidas
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-            <button
-              type="button"
-              onClick={() => navigate('/planning')}
-              className="card p-5 text-left hover:border-primary hover:shadow-sm transition"
-            >
-
-              <div className="flex items-center justify-between">
-
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <Plus className="w-5 h-5 text-primary" />
-                </div>
-
-                <ArrowRight className="w-4 h-4 text-muted" />
-
-              </div>
-
-              <h3 className="font-semibold text-main mt-4">
-                Nueva planificación
-              </h3>
-
-              <p className="text-sm text-muted mt-1">
-                Registrar una nueva propuesta cloud.
-              </p>
-
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/costs')}
-              className="card p-5 text-left hover:border-primary hover:shadow-sm transition"
-            >
-
-              <div className="flex items-center justify-between">
-
-                <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-costs" />
-                </div>
-
-                <ArrowRight className="w-4 h-4 text-muted" />
-
-              </div>
-
-              <h3 className="font-semibold text-main mt-4">
-                Revisar costos
-              </h3>
-
-              <p className="text-sm text-muted mt-1">
-                Consultar y modificar las estimaciones.
-              </p>
-
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/network')}
-              className="card p-5 text-left hover:border-primary hover:shadow-sm transition"
-            >
-
-              <div className="flex items-center justify-between">
-
-                <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-                  <Network className="w-5 h-5 text-security" />
-                </div>
-
-                <ArrowRight className="w-4 h-4 text-muted" />
-
-              </div>
-
-              <h3 className="font-semibold text-main mt-4">
-                Ver arquitectura
-              </h3>
-
-              <p className="text-sm text-muted mt-1">
-                Revisar la arquitectura de red.
-              </p>
-
-            </button>
-
-          </div>
-
-        </section>
-
-        {/* =====================================================
-            GRÁFICO Y SEGURIDAD
-        ===================================================== */}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* GRÁFICO */}
-
-          <div className="card p-5 lg:col-span-2">
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-
-              <div>
-                <h2 className="font-semibold text-main text-base">
-                  Distribución de costos por servicio
-                </h2>
-
-                <p className="text-xs text-muted mt-1">
-                  Valores estimados en dólares USD.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-
-                <button
-                  type="button"
-                  onClick={() => setChartView(true)}
-                  className={`px-3 py-1.5 text-xs rounded-md ${
-                    chartView
-                      ? 'bg-primary text-white'
-                      : 'bg-slate-100 text-muted'
-                  }`}
-                >
-                  Gráfico
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setChartView(false)}
-                  className={`px-3 py-1.5 text-xs rounded-md ${
-                    !chartView
-                      ? 'bg-primary text-white'
-                      : 'bg-slate-100 text-muted'
-                  }`}
-                >
-                  Resumen
-                </button>
-
-              </div>
-
-            </div>
-
-            {chartView ? (
-
-              <div className="w-full h-[280px]">
-
-                <ResponsiveContainer
-                  width="100%"
-                  height="100%"
-                >
-
-                  <BarChart
-                    data={barData}
-                    margin={{
-                      top: 10,
-                      right: 10,
-                      left: -20,
-                      bottom: 0,
-                    }}
-                  >
-
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke="#E2E8F0"
-                    />
-
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 11 }}
-                    />
-
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                    />
-
-                    <Tooltip />
-
-                    <Bar
-                      dataKey="value"
-                      fill="#2563EB"
-                      radius={[4, 4, 0, 0]}
-                    />
-
-                  </BarChart>
-
-                </ResponsiveContainer>
-
-              </div>
-
-            ) : (
-
-              <div className="space-y-3">
-
-                {barData.map((item) => (
-
-                  <div
-                    key={item.name}
-                    className="flex items-center justify-between border-b border-border pb-3"
-                  >
-
-                    <span className="text-sm text-main">
-                      {item.name}
-                    </span>
-
-                    <span className="font-semibold text-main">
-                      ${item.value.toFixed(2)}
-                    </span>
-
-                  </div>
-
-                ))}
-
-              </div>
-
-            )}
-
-          </div>
-
-          {/* SEGURIDAD */}
-
-          <div className="space-y-4">
-
-            <SecurityCard
-              title="Estado de seguridad"
-              score={securityScore}
-              status={securityStatus}
-            />
-
-            <SecurityList items={securityItems} />
-
-            {securityAttention > 0 && (
-
-              <div className="card p-4 border-amber-200">
-
-                <div className="flex items-start gap-3">
-
-                  <ShieldCheck className="w-5 h-5 text-costs mt-0.5" />
-
-                  <div>
-
-                    <div className="font-semibold text-main text-sm">
-                      Revisión recomendada
-                    </div>
-
-                    <p className="text-xs text-muted mt-1">
-                      Hay {securityAttention} control(es)
-                      que requieren atención.
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={() => navigate('/security')}
-                      className="text-primary text-xs font-medium mt-2 hover:underline"
-                    >
-                      Revisar seguridad
-                    </button>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            )}
-
-          </div>
-
-        </div>
-
-        {/* =====================================================
-            SERVICIOS DESTACADOS
-        ===================================================== */}
-
-        <section className="space-y-3">
-
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-
+        <div className="card p-5">
+          <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-base font-semibold text-main">
-                Servicios AWS
+              <p className="text-sm text-muted">
+                Estado de la arquitectura
+              </p>
+
+              <h3 className="text-xl font-bold text-main mt-1">
+                {infrastructureStatus}
+              </h3>
+            </div>
+
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Activity className="w-5 h-5 text-primary" />
+            </div>
+          </div>
+
+          <p className="text-xs text-muted mt-3">
+            Estado de planificación de la región seleccionada.
+          </p>
+        </div>
+      </div>
+
+      {/* INFORMACIÓN DE LA REGIÓN */}
+
+      {selectedRegion && (
+        <div className="card p-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-main">
+                Infraestructura de la región
               </h2>
 
-              <p className="text-xs text-muted mt-1">
-                Consulta rápida de los servicios registrados.
+              <p className="text-sm text-muted mt-1">
+                Servicios considerados en{' '}
+                {selectedRegion.code}.
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                setShowAllServices((current) => !current)
-              }
-              className="flex items-center gap-2 text-sm text-primary font-medium hover:underline"
-            >
-              <Eye className="w-4 h-4" />
-
-              {showAllServices
-                ? 'Mostrar menos'
-                : 'Ver todos'}
-            </button>
-
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+              Planificada
+            </span>
           </div>
 
-          {/* BUSCADOR */}
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="rounded-lg border border-border p-4">
+              <p className="text-xs text-muted">
+                Región
+              </p>
 
-          <div className="relative max-w-md">
+              <p className="font-semibold text-main mt-1">
+                {selectedRegion.code}
+              </p>
+            </div>
 
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <div className="rounded-lg border border-border p-4">
+              <p className="text-xs text-muted">
+                Ubicación
+              </p>
 
-            <input
-              type="search"
-              value={searchService}
-              onChange={(event) =>
-                setSearchService(event.target.value)
-              }
-              placeholder="Buscar servicio AWS..."
-              className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-white text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            />
+              <p className="font-semibold text-main mt-1">
+                {selectedRegion.location}
+              </p>
+            </div>
 
+            <div className="rounded-lg border border-border p-4">
+              <p className="text-xs text-muted">
+                Servicios
+              </p>
+
+              <p className="font-semibold text-main mt-1">
+                {selectedRegion.plannedServices.length}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-4">
+              <p className="text-xs text-muted">
+                Estado
+              </p>
+
+              <p className="font-semibold text-main mt-1">
+                {infrastructureStatus}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SERVICIOS DE LA REGIÓN */}
+
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-lg font-semibold text-main">
+              Servicios en la región
+            </h2>
+
+            <p className="text-sm text-muted mt-1">
+              Servicios considerados para{' '}
+              {selectedRegion?.code ??
+                'la región seleccionada'}.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <button
+            type="button"
+            onClick={() => navigate('/services')}
+            className="hidden sm:flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
+            Ver servicios
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
 
-            {filteredServices.map((service) => (
+        {regionServices.length === 0 ? (
+          <div className="card p-5 text-center">
+            <Server className="w-8 h-8 mx-auto text-muted mb-3" />
 
+            <h3 className="font-semibold text-main">
+              No hay servicios considerados
+            </h3>
+
+            <p className="text-sm text-muted mt-1">
+              Esta región no tiene servicios registrados
+              en la planificación.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {regionServices.map((service) => (
               <ServiceCard
                 key={service.id}
                 service={service}
               />
-
             ))}
+          </div>
+        )}
+      </div>
 
+      {/* COSTOS */}
+
+      <div className="card p-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-main">
+              Costos estimados
+            </h2>
+
+            <p className="text-sm text-muted mt-1">
+              Estimación de costos para los servicios
+              considerados en{' '}
+              {selectedRegion?.code ??
+                'la región seleccionada'}.
+            </p>
           </div>
 
-          {filteredServices.length === 0 && (
-
-            <div className="card p-8 text-center">
-
-              <Search className="w-8 h-8 mx-auto text-muted" />
-
-              <p className="text-sm text-muted mt-2">
-                No se encontraron servicios.
-              </p>
-
-            </div>
-
-          )}
-
-        </section>
-
-        {/* =====================================================
-            INFRAESTRUCTURA GLOBAL
-        ===================================================== */}
-
-        <section className="space-y-3">
-
-          <div className="flex items-center justify-between">
-
-            <div>
-              <h2 className="text-base font-semibold text-main">
-                Infraestructura global
-              </h2>
-
-              <p className="text-xs text-muted mt-1">
-                Regiones disponibles para la solución.
-              </p>
-            </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setChartView('monthly')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                chartView === 'monthly'
+                  ? 'bg-primary text-white'
+                  : 'bg-background text-muted hover:bg-border'
+              }`}
+            >
+              Mensual
+            </button>
 
             <button
               type="button"
-              onClick={() => navigate('/infrastructure')}
-              className="text-sm text-primary font-medium hover:underline"
+              onClick={() => setChartView('annual')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                chartView === 'annual'
+                  ? 'bg-primary text-white'
+                  : 'bg-background text-muted hover:bg-border'
+              }`}
             >
-              Ver infraestructura
+              Anual
             </button>
-
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-            {regions.map((region) => (
-
-              <RegionCard
-                key={region.id}
-                region={region}
-              />
-
-            ))}
-
-          </div>
-
-        </section>
-
-        {/* =====================================================
-            ESTADO FINAL
-        ===================================================== */}
-
-        <div className="card p-5">
-
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
-            <div className="flex items-center gap-3">
-
-              <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-security" />
-              </div>
-
-              <div>
-
-                <div className="font-semibold text-main">
-                  Estado general de la solución
-                </div>
-
-                <div className="text-sm text-muted">
-                  Los módulos principales se encuentran disponibles.
-                </div>
-
-              </div>
-
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('/services')}
-              className="flex items-center justify-center gap-2 px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-slate-50 transition"
-            >
-              Revisar servicios
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-          </div>
-
         </div>
 
+        <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Resumen */}
+
+          <div className="space-y-3">
+            <div className="rounded-lg bg-costs/10 border border-border p-4">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-costs" />
+
+                <span className="text-sm text-muted">
+                  Costo mensual
+                </span>
+              </div>
+
+              <p className="text-2xl font-bold text-main mt-2">
+                {formatCurrency(monthlyCost)}
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-background border border-border p-4">
+              <span className="text-sm text-muted">
+                Costo anual
+              </span>
+
+              <p className="text-2xl font-bold text-main mt-2">
+                {formatCurrency(annualCost)}
+              </p>
+            </div>
+          </div>
+
+          {/* Gráfico */}
+
+          <div className="lg:col-span-2 h-72">
+            {chartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-sm text-muted">
+                No existen datos de costos para esta región.
+              </div>
+            ) : (
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+
+                  <XAxis dataKey="service" />
+
+                  <YAxis />
+
+                  <Tooltip
+                    formatter={(value) =>
+                      formatCurrency(Number(value))
+                    }
+                  />
+
+                  <Bar
+                    dataKey={chartKey}
+                    name={chartTitle}
+                    fill="#2563EB"
+                    radius={[6, 6, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* RESUMEN DE SEGURIDAD */}
+
+      <div className="card p-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold text-main">
+              Resumen de seguridad
+            </h2>
+
+            <p className="text-sm text-muted mt-1">
+              Evaluación de los controles de seguridad
+              considerados para la solución CloudOps.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {securityWarnings > 0 ? (
+              <AlertTriangle className="w-5 h-5 text-costs" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 text-security" />
+            )}
+
+            <span className="text-sm font-semibold text-main">
+              {securityScore}% considerado
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+          {securityItems.slice(0, 3).map((item) => {
+            const score =
+              item.status === 'ok' ? 100 : 60
+
+            return (
+              <SecurityCard
+                key={item.id}
+                title={item.name}
+                score={score}
+                status={item.status}
+              />
+            )
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/security')}
+          className="mt-5 flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+        >
+          Ver módulo de seguridad
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
     </div>
   )
